@@ -520,8 +520,8 @@ class RLTradingAgent:
         self.b1 -= self.lr * db1
 
 # Custom Technical Analysis Functions
-def calculate_rsi(prices, window=14):
-    """Calculate RSI indicator"""
+def calculate_rsi(prices, window=7):
+    """Calculate RSI indicator optimized for scalping (7-period)"""
     delta = prices.diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean()
@@ -529,8 +529,8 @@ def calculate_rsi(prices, window=14):
     rsi = 100 - (100 / (1 + rs))
     return rsi.fillna(50)
 
-def calculate_macd(prices, fast=12, slow=26, signal=9):
-    """Calculate MACD indicator"""
+def calculate_macd(prices, fast=6, slow=12, signal=5):
+    """Calculate MACD indicator optimized for scalping (6,12,5)"""
     exp1 = prices.ewm(span=fast).mean()
     exp2 = prices.ewm(span=slow).mean()
     macd_line = exp1 - exp2
@@ -538,24 +538,24 @@ def calculate_macd(prices, fast=12, slow=26, signal=9):
     histogram = macd_line - signal_line
     return macd_line, signal_line, histogram
 
-def calculate_bollinger_bands(prices, window=20, num_std=2):
-    """Calculate Bollinger Bands"""
+def calculate_bollinger_bands(prices, window=10, num_std=2):
+    """Calculate Bollinger Bands optimized for scalping (10-period)"""
     rolling_mean = prices.rolling(window=window).mean()
     rolling_std = prices.rolling(window=window).std()
     upper_band = rolling_mean + (rolling_std * num_std)
     lower_band = rolling_mean - (rolling_std * num_std)
     return upper_band, rolling_mean, lower_band
 
-def calculate_stochastic(high, low, close, k_window=14, d_window=3):
-    """Calculate Stochastic Oscillator"""
+def calculate_stochastic(high, low, close, k_window=7, d_window=3):
+    """Calculate Stochastic Oscillator optimized for scalping (7,3)"""
     lowest_low = low.rolling(window=k_window).min()
     highest_high = high.rolling(window=k_window).max()
     k_percent = 100 * ((close - lowest_low) / (highest_high - lowest_low))
     d_percent = k_percent.rolling(window=d_window).mean()
     return k_percent.fillna(50), d_percent.fillna(50)
 
-def calculate_atr(high, low, close, window=14):
-    """Calculate Average True Range"""
+def calculate_atr(high, low, close, window=7):
+    """Calculate Average True Range optimized for scalping (7-period)"""
     tr1 = high - low
     tr2 = abs(high - close.shift())
     tr3 = abs(low - close.shift())
