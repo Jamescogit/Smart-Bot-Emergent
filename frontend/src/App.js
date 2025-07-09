@@ -496,7 +496,7 @@ function App() {
       <div className="p-6">
         {currentView === 'dashboard' ? (
           <div>
-            {/* Statistics Cards Row */}
+            {/* Statistics Cards Row - Scalping Focused */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
               <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
                 <div className="flex items-center justify-between">
@@ -521,58 +521,96 @@ function App() {
                   </div>
                 </div>
               </div>
-          
-          <div className="bg-white rounded-lg shadow p-6 border-l-4 border-purple-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Profit</p>
-                <p className="text-2xl font-bold text-gray-900">${performanceMetrics.totalProfit || 0}</p>
+              
+              <div className="bg-white rounded-lg shadow p-6 border-l-4 border-purple-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Profit</p>
+                    <p className={`text-2xl font-bold ${(performanceMetrics.totalProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      ${performanceMetrics.totalProfit || 0}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-purple-100 rounded-full">
+                    <DollarSign className="w-6 h-6 text-purple-600" />
+                  </div>
+                </div>
               </div>
-              <div className="p-3 bg-purple-100 rounded-full">
-                <DollarSign className="w-6 h-6 text-purple-600" />
+              
+              <div className="bg-white rounded-lg shadow p-6 border-l-4 border-orange-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Max Drawdown</p>
+                    <p className="text-2xl font-bold text-red-600">{performanceMetrics.maxDrawdown || 0}%</p>
+                  </div>
+                  <div className="p-3 bg-orange-100 rounded-full">
+                    <TrendingDown className="w-6 h-6 text-orange-600" />
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow p-6 border-l-4 border-orange-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Bot Confidence</p>
-                <p className="text-2xl font-bold text-gray-900">{performanceMetrics.botConfidence || 0}%</p>
-              </div>
-              <div className="p-3 bg-orange-100 rounded-full">
-                <Brain className="w-6 h-6 text-orange-600" />
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* Additional Stats Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 mb-6">
-          <div className="bg-white rounded-lg shadow p-6 border-l-4 border-red-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Number of Losses</p>
-                <p className="text-2xl font-bold text-gray-900">{performanceMetrics.totalLosses || 0}</p>
+            {/* Secondary Stats Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+              <div className="bg-white rounded-lg shadow p-6 border-l-4 border-cyan-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Bot Confidence</p>
+                    <p className="text-2xl font-bold text-gray-900">{performanceMetrics.botConfidence || 0}%</p>
+                  </div>
+                  <div className="p-3 bg-cyan-100 rounded-full">
+                    <Brain className="w-6 h-6 text-cyan-600" />
+                  </div>
+                </div>
               </div>
-              <div className="p-3 bg-red-100 rounded-full">
-                <TrendingDownIcon className="w-6 h-6 text-red-600" />
+              
+              <div className="bg-white rounded-lg shadow p-6 border-l-4 border-indigo-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Current Streak</p>
+                    <p className={`text-2xl font-bold ${(performanceMetrics.currentStreak || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {performanceMetrics.currentStreak || 0}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-indigo-100 rounded-full">
+                    <Zap className="w-6 h-6 text-indigo-600" />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-white rounded-lg shadow p-6 border-l-4 border-teal-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Last Trade</p>
+                    <p className={`text-lg font-bold ${(performanceMetrics.lastTradeStatus || '').includes('-') ? 'text-red-600' : 'text-green-600'}`}>
+                      {performanceMetrics.lastTradeStatus || 'No trades'}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-teal-100 rounded-full">
+                    <Activity className="w-6 h-6 text-teal-600" />
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow p-6 border-l-4 border-gray-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Pips</p>
-                <p className="text-2xl font-bold text-gray-900">{performanceMetrics.totalPips || 0}</p>
+
+            {/* Optional Extras Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              <div className="bg-white rounded-lg shadow p-4">
+                <h4 className="text-sm font-medium text-gray-600 mb-2">Last Trade Time</h4>
+                <p className="text-lg font-semibold text-gray-900">{performanceMetrics.lastTradeTime || 'Never'}</p>
               </div>
-              <div className="p-3 bg-gray-100 rounded-full">
-                <Target className="w-6 h-6 text-gray-600" />
+              
+              <div className="bg-white rounded-lg shadow p-4">
+                <h4 className="text-sm font-medium text-gray-600 mb-2">Top Strategy</h4>
+                <p className="text-lg font-semibold text-blue-600">{performanceMetrics.topStrategy || 'None'}</p>
+              </div>
+              
+              <div className="bg-white rounded-lg shadow p-4">
+                <h4 className="text-sm font-medium text-gray-600 mb-2">Daily Profit</h4>
+                <p className={`text-lg font-semibold ${(performanceMetrics.dailyProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  ${performanceMetrics.dailyProfit || 0}
+                </p>
               </div>
             </div>
-          </div>
-        </div>
 
         {/* Market Data Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
