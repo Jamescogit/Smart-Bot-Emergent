@@ -2036,6 +2036,23 @@ async def create_sample_enhanced_trades():
         "trades_created": len(sample_trades)
     }
 
+@api_router.post("/clear-sample-data")
+async def clear_sample_data():
+    """Clear existing sample data and regenerate with new logic"""
+    try:
+        # Clear existing trades
+        await db.trades.delete_many({})
+        
+        # Clear existing enhanced trades
+        await db.enhanced_trades.delete_many({})
+        
+        # Regenerate sample data
+        await populate_sample_data()
+        
+        return {"message": "Sample data cleared and regenerated successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error clearing data: {str(e)}")
+
 @api_router.get("/performance-metrics")
 async def get_performance_metrics():
     """Get comprehensive performance metrics"""
