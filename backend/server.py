@@ -1557,6 +1557,12 @@ async def add_tweet_input(tweet_input: TweetInput):
 async def get_trading_history():
     """Get trading history"""
     trades = await db.trades.find().sort("timestamp", -1).limit(100).to_list(100)
+    
+    # Convert ObjectId to string for JSON serialization
+    for trade in trades:
+        if '_id' in trade:
+            trade['_id'] = str(trade['_id'])
+    
     return trades
 
 @api_router.get("/model-status")
