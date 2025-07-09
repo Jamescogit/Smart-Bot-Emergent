@@ -1809,6 +1809,9 @@ def generate_sample_enhanced_trades() -> List[Dict]:
         pips_gained = np.random.uniform(-10, 15)
         percentage_pl = np.random.uniform(-2, 3)
         
+        rsi_value = np.random.randint(20, 80)
+        macd_value = np.random.uniform(-0.002, 0.002)
+        
         trade = {
             'timestamp': (datetime.utcnow() - timedelta(hours=np.random.randint(1, 168))).isoformat(),
             'symbol': symbol,
@@ -1818,7 +1821,7 @@ def generate_sample_enhanced_trades() -> List[Dict]:
             'pips_gained': round(pips_gained, 1),
             'percentage_pl': round(percentage_pl, 2),
             'confidence': round(np.random.uniform(0.5, 0.95), 2),
-            'decision_factors': f"RSI {np.random.randint(20, 80)}, MACD {np.random.choice(['Bullish', 'Bearish'])}, {np.random.choice(['Positive News', 'Negative News', 'Neutral'])}",
+            'decision_factors': f"RSI {rsi_value}, MACD {np.random.choice(['Bullish', 'Bearish'])}, {np.random.choice(['Positive News', 'Negative News', 'Neutral'])}",
             'trade_type': 'Scalping',
             'forecast_trend': np.random.choice(['UP', 'DOWN', 'NEUTRAL']),
             'news_sentiment': round(np.random.uniform(-0.5, 0.5), 2),
@@ -1828,7 +1831,12 @@ def generate_sample_enhanced_trades() -> List[Dict]:
             'risk_level': np.random.choice(risk_levels),
             'exit_reason': np.random.choice(exit_reasons),
             'is_closed': True,
-            'close_timestamp': (datetime.utcnow() - timedelta(hours=np.random.randint(0, 167))).isoformat()
+            'close_timestamp': (datetime.utcnow() - timedelta(hours=np.random.randint(0, 167))).isoformat(),
+            # Add separate technical indicator columns
+            'rsi_value': rsi_value,
+            'macd_value': round(macd_value, 4),
+            'volume_spike': round(np.random.uniform(0.8, 2.5), 2),
+            'volatility': round(np.random.uniform(0.001, 0.005), 4)
         }
         sample_trades.append(trade)
     
