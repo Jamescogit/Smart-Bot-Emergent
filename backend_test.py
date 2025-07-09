@@ -236,6 +236,133 @@ class TradingBotAPITester:
                 print("  ❌ Performance metrics structure is missing fields")
                 success = False
         return success
+        
+    def test_create_sample_trades(self):
+        """Test create sample trades endpoint for persistence"""
+        success, response = self.run_test(
+            "Create Sample Trades",
+            "POST",
+            "create-sample-trades",
+            200
+        )
+        if success and response:
+            print(f"  Message: {response.get('message')}")
+            print(f"  Trades Created: {response.get('trades_created')}")
+        return success
+        
+    def test_clear_sample_data(self):
+        """Test clear sample data endpoint"""
+        success, response = self.run_test(
+            "Clear Sample Data",
+            "POST",
+            "clear-sample-data",
+            200
+        )
+        if success and response:
+            print(f"  Message: {response.get('message')}")
+        return success
+        
+    def test_performance_metrics(self):
+        """Test performance metrics endpoint"""
+        success, response = self.run_test(
+            "Performance Metrics",
+            "GET",
+            "performance-metrics",
+            200
+        )
+        if success and response:
+            print(f"  Win Rate: {response.get('win_rate')}%")
+            print(f"  Total Trades: {response.get('total_trades')}")
+            print(f"  Total Pips: {response.get('total_pips')}")
+            
+            # Verify metrics structure
+            required_fields = ['win_rate', 'total_trades', 'total_pips', 'profit_factor']
+            all_fields_present = all(field in response for field in required_fields)
+            if all_fields_present:
+                print("  ✅ Performance metrics structure is valid")
+            else:
+                print("  ❌ Performance metrics structure is missing fields")
+                success = False
+        return success
+        
+    def test_persistence_files(self):
+        """Test if persistence files are created in the data directory"""
+        print("\n🔍 Testing Persistence Files...")
+        data_dir = "/app/data"
+        
+        # List of expected persistence files
+        expected_files = [
+            "rl_agent.pkl",
+            "scalping_rl_agent.pkl",
+            "ml_models.pkl",
+            "feature_history.pkl",
+            "price_history.pkl",
+            "trading_history.json",
+            "model_performance.json"
+        ]
+        
+        # Check if data directory exists
+        if not os.path.exists(data_dir):
+            print(f"❌ Failed - Data directory {data_dir} does not exist")
+            return False
+            
+        print(f"✅ Data directory {data_dir} exists")
+        
+        # Check for each expected file
+        all_files_exist = True
+        for file_name in expected_files:
+            file_path = os.path.join(data_dir, file_name)
+            if os.path.exists(file_path):
+                file_size = os.path.getsize(file_path)
+                print(f"✅ {file_name} exists (size: {file_size} bytes)")
+                
+                # Check if file is not empty
+                if file_size == 0:
+                    print(f"⚠️ Warning: {file_name} is empty")
+            else:
+                print(f"❌ {file_name} does not exist")
+                all_files_exist = False
+                
+        self.tests_run += 1
+        if all_files_exist:
+            self.tests_passed += 1
+            
+        return all_files_exist
+        
+    def test_periodic_save(self):
+        """Test that periodic save is working"""
+        print("\n🔍 Testing Periodic Save Functionality...")
+        
+        # First, get the current modification time of a persistence file
+        rl_agent_file = "/app/data/scalping_rl_agent.pkl"
+        
+        if not os.path.exists(rl_agent_file):
+            print(f"❌ Failed - {rl_agent_file} does not exist")
+            return False
+            
+        initial_mtime = os.path.getmtime(rl_agent_file)
+        initial_time = datetime.fromtimestamp(initial_mtime)
+        print(f"Initial modification time: {initial_time}")
+        
+        # Train the model to trigger a save
+        self.test_train_models()
+        
+        # Check if the file was updated
+        new_mtime = os.path.getmtime(rl_agent_file)
+        new_time = datetime.fromtimestamp(new_mtime)
+        print(f"New modification time: {new_time}")
+        
+        # Check if the file was updated
+        was_updated = new_mtime > initial_mtime
+        
+        self.tests_run += 1
+        if was_updated:
+            self.tests_passed += 1
+            print("✅ Persistence file was updated after training")
+        else:
+            print("❌ Persistence file was not updated after training")
+            
+        return was_updated
 
     def test_mock_trades(self):
         """Test mock trades endpoint for ObjectId serialization"""
