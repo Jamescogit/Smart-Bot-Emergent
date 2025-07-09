@@ -1961,23 +1961,24 @@ def generate_sample_enhanced_trades() -> List[Dict]:
             'EURJPY': 164.0 + np.random.uniform(-2, 2)
         }[symbol]
         
-        exit_price = entry_price + np.random.uniform(-0.01, 0.01) * entry_price
+        exit_price = entry_price + np.random.uniform(-0.005, 0.005) * entry_price  # Smaller moves for scalping
         
         # Use correct pip calculation
         pips_gained = calculate_pips(entry_price, exit_price, symbol, action)
         
-        # Calculate percentage P/L
+        # Calculate percentage P/L (more realistic for scalping)
         if action == "BUY":
             percentage_pl = ((exit_price - entry_price) / entry_price) * 100
         else:  # SELL
             percentage_pl = ((entry_price - exit_price) / entry_price) * 100
         
-        rsi_value = np.random.randint(20, 80)
-        macd_value = np.random.uniform(-0.002, 0.002)
-        macd_signal = macd_value + np.random.uniform(-0.0005, 0.0005)
-        atr_value = np.random.uniform(0.0005, 0.003)
-        volume_value = np.random.randint(10000, 150000)
-        news_sentiment = round(np.random.uniform(-0.5, 0.5), 2)
+        # Generate technical indicators optimized for scalping
+        rsi_value = np.random.randint(25, 75)  # More realistic RSI range
+        macd_value = np.random.uniform(-0.0005, 0.0005)  # Smaller MACD values for scalping
+        macd_signal = macd_value + np.random.uniform(-0.0001, 0.0001)  # Tighter signal
+        atr_value = np.random.uniform(0.0008, 0.0015)  # Realistic ATR for scalping
+        volume_value = np.random.randint(50000, 120000)  # Volume range for scalping
+        news_sentiment = round(np.random.uniform(-0.3, 0.3), 2)  # Moderate sentiment
         tweet_bias = np.random.choice(['BULLISH', 'BEARISH', 'NEUTRAL'])
         
         # Create technical indicators dict for strategy determination
