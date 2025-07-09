@@ -2795,6 +2795,13 @@ async def train_models():
             if result.get('success', False):
                 model_performance[f'{model_name}_accuracy'] = result.get('accuracy', 0.0)
         
+        # Save ML model training progress
+        try:
+            save_all_persistent_data()
+            print("💾 Saved ML model training progress")
+        except Exception as e:
+            print(f"❌ Error saving ML model progress: {e}")
+        
         return {
             "message": "Advanced ML models training simulation started",
             "overall_success": training_results.get('overall_success', False),
