@@ -2293,26 +2293,89 @@ async def deactivate_model(model_name: str):
 
 @api_router.get("/performance-metrics")
 async def get_performance_metrics():
-    """Get comprehensive performance metrics"""
+    """Get comprehensive performance metrics optimized for scalping"""
     try:
         # Get trading history
         trades = await db.trades.find().to_list(1000)
         
-        # Calculate metrics
+        # Calculate basic metrics
         total_trades = len(trades)
         winning_trades = len([t for t in trades if t.get('profit', 0) > 0])
         losing_trades = len([t for t in trades if t.get('profit', 0) < 0])
         
         win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
         total_profit = sum(t.get('profit', 0) for t in trades)
-        total_pips = sum(t.get('pips', 0) for t in trades)
         
-        # Calculate bot confidence (based on recent trading performance)
-        recent_trades = sorted(trades, key=lambda x: x.get('timestamp', ''), reverse=True)[:20]
+        # Calculate Max Drawdown
+        running_profit = 0
+        peak_profit = 0
+        max_drawdown = 0
+        
+        sorted_trades = sorted(trades, key=lambda x: x.get('timestamp', ''))
+        for trade in sorted_trades:
+            running_profit += trade.get('profit', 0)
+            if running_profit > peak_profit:
+                peak_profit = running_profit
+            
+            current_drawdown = ((peak_profit - running_profit) / max(abs(peak_profit), 1)) * 100
+            if current_drawdown > max_drawdown:
+                max_drawdown = current_drawdown
+        
+        # Calculate Current Streak
+        current_streak = 0
+        if trades:
+            recent_trades = sorted_trades[-10:]  # Last 10 trades
+            for trade in reversed(recent_trades):
+                if trade.get('profit', 0) > 0:
+                    if current_streak >= 0:
+                        current_streak += 1
+                    else:
+                        break
+                else:
+                    if current_streak <= 0:
+                        current_streak -= 1
+                    else:
+                        break
+        
+        # Last Trade Info
+        last_trade_status = "No trades"
+        last_trade_time = "Never"
+        if trades:
+            last_trade = sorted_trades[-1]
+            last_profit = last_trade.get('profit', 0)
+            last_trade_status = f"${last_profit:.2f}" if last_profit >= 0 else f"-${abs(last_profit):.2f}"
+            if 'timestamp' in last_trade:
+                try:
+                    last_trade_time = str(last_trade['timestamp'])[:19]  # Format timestamp
+                except:
+                    last_trade_time = "Recent"
+        
+        # Top Strategy Used
+        strategy_counts = {}
+        for trade in trades:
+            strategy = trade.get('bot_strategy', 'Unknown')
+            strategy_counts[strategy] = strategy_counts.get(strategy, 0) + 1
+        
+        top_strategy = max(strategy_counts.items(), key=lambda x: x[1])[0] if strategy_counts else "None"
+        
+        # Daily Profit (last 24 hours)
+        from datetime import datetime, timedelta
+        yesterday = datetime.now() - timedelta(days=1)
+        daily_trades = [t for t in trades if 'timestamp' in t and str(t['timestamp']) > str(yesterday)]
+        daily_profit = sum(t.get('profit', 0) for t in daily_trades)
+        
+        # Calculate bot confidence (based on recent performance)
+        recent_trades = sorted_trades[-20:] if len(sorted_trades) >= 20 else sorted_trades
         if recent_trades:
             recent_win_rate = len([t for t in recent_trades if t.get('profit', 0) > 0]) / len(recent_trades) * 100
-            # Bot confidence is based on recent performance and win rate
-            bot_confidence = min(90, max(10, recent_win_rate * 0.8 + 20))  # Scale 10-90%
+            recent_profit = sum(t.get('profit', 0) for t in recent_trades)
+            
+            # Bot confidence formula: recent win rate + profit factor + streak factor
+            confidence_base = recent_win_rate * 0.6  # 60% weight on win rate
+            profit_factor = min(20, max(-20, recent_profit)) * 0.5  # Profit contribution
+            streak_factor = min(10, max(-10, current_streak)) * 2  # Streak contribution
+            
+            bot_confidence = max(10, min(95, confidence_base + profit_factor + streak_factor))
         else:
             bot_confidence = 50  # Default confidence
         
@@ -2320,9 +2383,14 @@ async def get_performance_metrics():
             "totalTrades": total_trades,
             "winRate": round(win_rate, 1),
             "totalProfit": round(total_profit, 2),
-            "totalPips": round(total_pips, 1),
-            "totalLosses": losing_trades,
-            "botConfidence": round(bot_confidence, 1)
+            "maxDrawdown": round(max_drawdown, 1),
+            "botConfidence": round(bot_confidence, 1),
+            "currentStreak": current_streak,
+            "lastTradeStatus": last_trade_status,
+            "lastTradeTime": last_trade_time,
+            "topStrategy": top_strategy,
+            "dailyProfit": round(daily_profit, 2),
+            "totalLosses": losing_trades
         }
     except Exception as e:
         # Return default values if error
@@ -2330,9 +2398,14 @@ async def get_performance_metrics():
             "totalTrades": 0,
             "winRate": 0,
             "totalProfit": 0,
-            "totalPips": 0,
-            "totalLosses": 0,
-            "botConfidence": 50
+            "maxDrawdown": 0,
+            "botConfidence": 50,
+            "currentStreak": 0,
+            "lastTradeStatus": "No trades",
+            "lastTradeTime": "Never", 
+            "topStrategy": "None",
+            "dailyProfit": 0,
+            "totalLosses": 0
         }
 
 @api_router.get("/trading-history")
