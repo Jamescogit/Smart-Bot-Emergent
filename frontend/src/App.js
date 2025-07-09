@@ -121,24 +121,18 @@ function App() {
     try {
       const response = await axios.get(`${API}/trading-history`);
       setTradingHistory(response.data);
-      
-      // Calculate performance metrics
-      const totalTrades = response.data.length;
-      const winningTrades = response.data.filter(trade => trade.profit > 0).length;
-      const losingTrades = response.data.filter(trade => trade.profit < 0).length;
-      const totalProfit = response.data.reduce((sum, trade) => sum + (trade.profit || 0), 0);
-      const totalPips = response.data.reduce((sum, trade) => sum + (trade.pips || 0), 0);
-      
-      setPerformanceMetrics({
-        totalTrades,
-        winningTrades,
-        losingTrades,
-        winRate: totalTrades > 0 ? (winningTrades / totalTrades * 100).toFixed(1) : 0,
-        totalProfit: totalProfit.toFixed(2),
-        totalPips: totalPips.toFixed(1)
-      });
     } catch (error) {
       console.error('Error fetching trading history:', error);
+    }
+  };
+
+  // Fetch performance metrics
+  const fetchPerformanceMetrics = async () => {
+    try {
+      const response = await axios.get(`${API}/performance-metrics`);
+      setPerformanceMetrics(response.data);
+    } catch (error) {
+      console.error('Error fetching performance metrics:', error);
     }
   };
 
