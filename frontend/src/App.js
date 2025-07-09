@@ -957,6 +957,54 @@ function App() {
               </div>
             </div>
 
+            {/* Scalping RL Performance */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-4 border-b">
+                <h3 className="text-lg font-semibold text-gray-800">Scalping RL Agent</h3>
+              </div>
+              <div className="p-4">
+                {scalpingRLPerformance.metrics && (
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Status:</span>
+                      <span className={`px-2 py-1 rounded text-xs ${scalpingRLPerformance.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                        {scalpingRLPerformance.status}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Trades:</span>
+                      <span className="font-semibold">{scalpingRLPerformance.metrics.trades_made}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Win Rate:</span>
+                      <span className={`font-semibold ${scalpingRLPerformance.metrics.win_rate >= 60 ? 'text-green-600' : scalpingRLPerformance.metrics.win_rate >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>
+                        {scalpingRLPerformance.metrics.win_rate?.toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Total Pips:</span>
+                      <span className={`font-semibold ${scalpingRLPerformance.metrics.total_pips >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {scalpingRLPerformance.metrics.total_pips?.toFixed(1)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Streak:</span>
+                      <span className={`font-semibold ${scalpingRLPerformance.metrics.current_streak >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {scalpingRLPerformance.metrics.current_streak}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Learning Rate:</span>
+                      <span className="font-semibold">{scalpingRLPerformance.metrics.epsilon?.toFixed(3)}</span>
+                    </div>
+                  </div>
+                )}
+                {scalpingRLPerformance.error && (
+                  <p className="text-sm text-red-600">{scalpingRLPerformance.error}</p>
+                )}
+              </div>
+            </div>
+
             {/* Backtest Results */}
             {backtestResults && (
               <div className="bg-white rounded-lg shadow">
