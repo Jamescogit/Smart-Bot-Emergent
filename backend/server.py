@@ -287,21 +287,21 @@ class ScalpingRLAgent:
         
         # Combine features into state vector
         state = np.array([
-            momentum_1m * 1000,  # Scale up small forex movements
-            momentum_2m * 1000,
-            momentum_3m * 1000,
-            price_range * 1000,
-            volume_spike,
-            distance_to_high * 1000,
-            distance_to_low * 1000,
-            green_candles / len(recent_candles),
-            red_candles / len(recent_candles),
-            price_vs_sma3 * 1000,
-            price_vs_sma5 * 1000,
+            momentum_1m * 1000,  # Short-term momentum
+            momentum_2m * 1000,  # Medium-term momentum
+            momentum_1m * 1000,  # Repeat short-term for consistency
+            price_range * 1000,  # Volatility measure
+            volume_spike,        # Volume analysis
+            distance_to_high * 1000,  # Distance to resistance
+            distance_to_low * 1000,   # Distance to support
+            green_candles / len(recent_candles),  # Bullish pressure
+            red_candles / len(recent_candles),    # Bearish pressure
+            price_vs_sma3 * 1000,    # Short-term trend
+            price_vs_sma3 * 1000,    # Repeat for consistency
             np.tanh(current_price / 1000),  # Normalized price
-            self.epsilon,  # Exploration factor
-            self.trades_made / 100,  # Normalized trade count
-            self.total_pips / 1000  # Normalized total pips
+            self.epsilon,        # Exploration factor
+            self.trades_made / 100,  # Experience factor
+            self.total_pips / 1000   # Performance factor
         ])
         
         return state
