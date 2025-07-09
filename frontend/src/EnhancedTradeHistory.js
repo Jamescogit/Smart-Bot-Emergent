@@ -298,7 +298,15 @@ const EnhancedTradeHistory = () => {
                     </td>
                   )}
                   {visibleColumns.confidence && (
-                    <td className="p-3 text-gray-700">{(trade.confidence * 100).toFixed(1)}%</td>
+                    <td className="p-3">
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        trade.confidence >= 0.8 ? 'bg-green-100 text-green-800' :
+                        trade.confidence >= 0.6 ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {(trade.confidence * 100).toFixed(1)}%
+                      </span>
+                    </td>
                   )}
                   {visibleColumns.decisionFactors && (
                     <td className="p-3 text-gray-600 max-w-xs truncate" title={trade.decision_factors}>
