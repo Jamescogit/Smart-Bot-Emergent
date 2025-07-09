@@ -425,7 +425,7 @@ function App() {
           <div className="flex items-center space-x-4">
             <div className="text-2xl font-bold text-gray-800">
               <Brain className="w-8 h-8 text-blue-600 inline-block mr-2" />
-              Notika Trading Bot
+              Cash Trading Bot
             </div>
             <div className="text-sm text-gray-500">Advanced ML Trading System</div>
           </div>
