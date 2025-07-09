@@ -1736,6 +1736,158 @@ async def add_tweet_input(tweet_input: TweetInput):
         "bear_score": bear_score
     }
 
+@api_router.get("/enhanced-trading-history")
+async def get_enhanced_trading_history(limit: int = 100):
+    """Get enhanced trading history with all tracking details"""
+    trades = await db.enhanced_trades.find().sort("timestamp", -1).limit(limit).to_list(limit)
+    
+    # Convert ObjectId to string for JSON serialization
+    for trade in trades:
+        if '_id' in trade:
+            trade['_id'] = str(trade['_id'])
+    
+    return {
+        "trades": trades,
+        "total_count": len(trades),
+        "columns": [
+            "🕒 Time", "📈 Symbol", "💰 Action", "💸 Entry Price", 
+            "⏳ Exit Price", "📊 Pips Gained", "💹 % P/L", "🤖 Confidence",
+            "📋 Decision Factors", "📦 Trade Type", "📉 Forecast Trend",
+            "📰 News Sentiment", "🗣️ Tweet Bias", "💡 Bot Strategy",
+            "🧠 ML Decision", "📦 Risk Level", "🧾 Exit Reason"
+        ]
+    }
+
+@api_router.get("/export-enhanced-trades")
+async def export_enhanced_trades():
+    """Export enhanced trading history to CSV format"""
+    trades = await db.enhanced_trades.find().sort("timestamp", -1).to_list(1000)
+    
+    if not trades:
+        # Generate sample enhanced trades for demonstration
+        sample_trades = generate_sample_enhanced_trades()
+        return {
+            "message": "CSV data generated with sample trades",
+            "total_trades": len(sample_trades),
+            "csv_data": convert_trades_to_csv(sample_trades)
+        }
+    
+    # Convert ObjectId to string and prepare for CSV
+    for trade in trades:
+        if '_id' in trade:
+            trade['_id'] = str(trade['_id'])
+    
+    csv_data = convert_trades_to_csv(trades)
+    
+    return {
+        "message": "Enhanced trading history exported successfully",
+        "total_trades": len(trades),
+        "csv_data": csv_data
+    }
+
+def generate_sample_enhanced_trades() -> List[Dict]:
+    """Generate sample enhanced trades for demonstration"""
+    sample_trades = []
+    symbols = ['XAUUSD', 'EURUSD', 'USDJPY', 'EURJPY']
+    actions = ['BUY', 'SELL']
+    strategies = ['RSI Reversal', 'MACD Crossover', 'Momentum Breakout', 'Support Resistance']
+    ml_models = ['XGBoost', 'CatBoost', 'Prophet', 'RL Agent']
+    risk_levels = ['Low', 'Medium', 'High']
+    exit_reasons = ['TP Hit', 'SL Hit', 'Timeout', 'Manual Rule']
+    
+    for i in range(50):
+        symbol = np.random.choice(symbols)
+        action = np.random.choice(actions)
+        entry_price = {
+            'XAUUSD': 2650.0 + np.random.uniform(-50, 50),
+            'EURUSD': 1.0500 + np.random.uniform(-0.02, 0.02),
+            'USDJPY': 156.0 + np.random.uniform(-2, 2),
+            'EURJPY': 164.0 + np.random.uniform(-2, 2)
+        }[symbol]
+        
+        exit_price = entry_price + np.random.uniform(-0.01, 0.01) * entry_price
+        pips_gained = np.random.uniform(-10, 15)
+        percentage_pl = np.random.uniform(-2, 3)
+        
+        trade = {
+            'timestamp': (datetime.utcnow() - timedelta(hours=np.random.randint(1, 168))).isoformat(),
+            'symbol': symbol,
+            'action': action,
+            'entry_price': round(entry_price, 4),
+            'exit_price': round(exit_price, 4),
+            'pips_gained': round(pips_gained, 1),
+            'percentage_pl': round(percentage_pl, 2),
+            'confidence': round(np.random.uniform(0.5, 0.95), 2),
+            'decision_factors': f"RSI {np.random.randint(20, 80)}, MACD {np.random.choice(['Bullish', 'Bearish'])}, {np.random.choice(['Positive News', 'Negative News', 'Neutral'])}",
+            'trade_type': 'Scalping',
+            'forecast_trend': np.random.choice(['UP', 'DOWN', 'NEUTRAL']),
+            'news_sentiment': round(np.random.uniform(-0.5, 0.5), 2),
+            'tweet_bias': np.random.choice(['BULLISH', 'BEARISH', 'NEUTRAL']),
+            'bot_strategy': np.random.choice(strategies),
+            'ml_decision': np.random.choice(ml_models),
+            'risk_level': np.random.choice(risk_levels),
+            'exit_reason': np.random.choice(exit_reasons),
+            'is_closed': True,
+            'close_timestamp': (datetime.utcnow() - timedelta(hours=np.random.randint(0, 167))).isoformat()
+        }
+        sample_trades.append(trade)
+    
+    return sample_trades
+
+def convert_trades_to_csv(trades: List[Dict]) -> str:
+    """Convert trades list to CSV format string"""
+    if not trades:
+        return ""
+    
+    # Define CSV headers
+    headers = [
+        "🕒 Time", "📈 Symbol", "💰 Action", "💸 Entry Price", 
+        "⏳ Exit Price", "📊 Pips Gained", "💹 % P/L", "🤖 Confidence",
+        "📋 Decision Factors", "📦 Trade Type", "📉 Forecast Trend",
+        "📰 News Sentiment", "🗣️ Tweet Bias", "💡 Bot Strategy",
+        "🧠 ML Decision", "📦 Risk Level", "🧾 Exit Reason"
+    ]
+    
+    csv_lines = [",".join(headers)]
+    
+    for trade in trades:
+        row = [
+            trade.get('timestamp', ''),
+            trade.get('symbol', ''),
+            trade.get('action', ''),
+            str(trade.get('entry_price', '')),
+            str(trade.get('exit_price', '')),
+            str(trade.get('pips_gained', '')),
+            str(trade.get('percentage_pl', '')),
+            str(trade.get('confidence', '')),
+            f'"{trade.get("decision_factors", "")}"',  # Quote to handle commas
+            trade.get('trade_type', ''),
+            trade.get('forecast_trend', ''),
+            str(trade.get('news_sentiment', '')),
+            trade.get('tweet_bias', ''),
+            trade.get('bot_strategy', ''),
+            trade.get('ml_decision', ''),
+            trade.get('risk_level', ''),
+            trade.get('exit_reason', '')
+        ]
+        csv_lines.append(",".join(row))
+    
+    return "\n".join(csv_lines)
+
+@api_router.post("/create-sample-trades")
+async def create_sample_enhanced_trades():
+    """Create sample enhanced trades in database for testing"""
+    sample_trades = generate_sample_enhanced_trades()
+    
+    # Insert into database
+    if sample_trades:
+        await db.enhanced_trades.insert_many(sample_trades)
+    
+    return {
+        "message": f"Created {len(sample_trades)} sample enhanced trades",
+        "trades_created": len(sample_trades)
+    }
+
 @api_router.get("/trading-history")
 async def get_trading_history():
     """Get trading history"""
