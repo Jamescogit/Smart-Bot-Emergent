@@ -948,6 +948,114 @@ async def get_market_data(symbol: str):
             'timestamp': datetime.now()
         }
 
+@api_router.get("/candlestick-data/{symbol}")
+async def get_candlestick_data(symbol: str, period: str = '1d', interval: str = '1m'):
+    """Get candlestick data for scalping"""
+    if symbol not in SYMBOLS:
+        raise HTTPException(status_code=400, detail="Invalid symbol")
+    
+    try:
+        candlestick_data = await fetch_candlestick_data(symbol, period, interval)
+        return {
+            'symbol': symbol,
+            'period': period,
+            'interval': interval,
+            'data': candlestick_data
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching candlestick data: {str(e)}")
+
+@api_router.get("/scalping-signal/{symbol}")
+async def get_scalping_signal(symbol: str):
+    """Get scalping-focused trading signal"""
+    if symbol not in SYMBOLS:
+        raise HTTPException(status_code=400, detail="Invalid symbol")
+    
+    try:
+        # Get recent candlestick data for scalping analysis
+        candlestick_data = await fetch_candlestick_data(symbol, period='1d', interval='1m')
+        
+        if not candlestick_data:
+            raise HTTPException(status_code=404, detail="No data available for scalping analysis")
+        
+        # Simple scalping signal based on recent price action
+        recent_candles = candlestick_data[-5:]  # Last 5 minutes
+        
+        if len(recent_candles) < 3:
+            return ScalpingSignal(
+                symbol=symbol,
+                action="HOLD",
+                entry_price=recent_candles[-1]['close'],
+                stop_loss=recent_candles[-1]['close'] * 0.999,
+                take_profit=recent_candles[-1]['close'] * 1.001,
+                confidence=0.0,
+                reasons=["Insufficient data for scalping"],
+                timeframe="1m"
+            )
+        
+        # Basic scalping logic
+        current_price = recent_candles[-1]['close']
+        prev_price = recent_candles[-2]['close']
+        
+        # Calculate short-term momentum
+        momentum = (current_price - prev_price) / prev_price
+        
+        # Calculate volatility
+        highs = [candle['high'] for candle in recent_candles]
+        lows = [candle['low'] for candle in recent_candles]
+        volatility = (max(highs) - min(lows)) / current_price
+        
+        # Generate scalping signal
+        action = "HOLD"
+        confidence = 0.5
+        reasons = []
+        
+        # Define pip value based on symbol
+        pip_values = {
+            'XAUUSD': 0.1,
+            'EURUSD': 0.0001,
+            'EURJPY': 0.01,
+            'USDJPY': 0.01,
+            'NASDAQ': 1.0
+        }
+        
+        pip_value = pip_values.get(symbol, 0.01)
+        
+        if momentum > 0.0005:  # Strong upward momentum
+            action = "BUY"
+            confidence = min(0.8, 0.5 + momentum * 1000)
+            reasons.append("Strong upward momentum detected")
+            stop_loss = current_price - (pip_value * 5)  # 5 pip stop loss
+            take_profit = current_price + (pip_value * 10)  # 10 pip take profit
+        elif momentum < -0.0005:  # Strong downward momentum
+            action = "SELL"
+            confidence = min(0.8, 0.5 + abs(momentum) * 1000)
+            reasons.append("Strong downward momentum detected")
+            stop_loss = current_price + (pip_value * 5)  # 5 pip stop loss
+            take_profit = current_price - (pip_value * 10)  # 10 pip take profit
+        else:
+            stop_loss = current_price - (pip_value * 2)
+            take_profit = current_price + (pip_value * 2)
+            reasons.append("Consolidation - waiting for breakout")
+        
+        if volatility > 0.002:
+            reasons.append("High volatility - good for scalping")
+            confidence += 0.1
+        
+        return ScalpingSignal(
+            symbol=symbol,
+            action=action,
+            entry_price=current_price,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
+            confidence=min(confidence, 0.9),
+            reasons=reasons,
+            timeframe="1m"
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating scalping signal: {str(e)}")
+
 @api_router.get("/technical-indicators/{symbol}")
 async def get_technical_indicators(symbol: str):
     """Get technical indicators for a symbol"""
