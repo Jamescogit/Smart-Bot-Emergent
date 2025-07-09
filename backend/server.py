@@ -2421,6 +2421,13 @@ async def clear_sample_data():
         # Regenerate sample data
         await populate_sample_data()
         
+        # Save after data regeneration
+        try:
+            save_all_persistent_data()
+            print("💾 Saved trading data after clearing and regenerating")
+        except Exception as e:
+            print(f"❌ Error saving after data regeneration: {e}")
+        
         return {"message": "Sample data cleared and regenerated successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error clearing data: {str(e)}")
