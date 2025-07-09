@@ -331,7 +331,15 @@ const EnhancedTradeHistory = () => {
                     </td>
                   )}
                   {visibleColumns.tweetBias && (
-                    <td className="p-3 text-gray-700">{trade.tweet_bias}</td>
+                    <td className="p-3">
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        trade.tweet_bias === 'BULLISH' ? 'bg-green-100 text-green-800' :
+                        trade.tweet_bias === 'BEARISH' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {trade.tweet_bias}
+                      </span>
+                    </td>
                   )}
                   {visibleColumns.botStrategy && (
                     <td className="p-3">
