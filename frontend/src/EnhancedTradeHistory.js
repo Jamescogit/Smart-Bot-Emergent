@@ -320,8 +320,14 @@ const EnhancedTradeHistory = () => {
                     </td>
                   )}
                   {visibleColumns.newsSentiment && (
-                    <td className={`p-3 ${getProfitColor(trade.news_sentiment)}`}>
-                      {trade.news_sentiment?.toFixed(2) || '0.00'}
+                    <td className="p-3">
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        trade.news_sentiment > 0.1 ? 'bg-green-100 text-green-800' :
+                        trade.news_sentiment < -0.1 ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {trade.news_sentiment?.toFixed(2) || '0.00'}
+                      </span>
                     </td>
                   )}
                   {visibleColumns.tweetBias && (
