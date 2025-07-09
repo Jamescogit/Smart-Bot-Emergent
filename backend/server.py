@@ -65,17 +65,17 @@ class MarketData(BaseModel):
 
 class TechnicalIndicators(BaseModel):
     symbol: str
-    rsi: float
-    macd: float
-    macd_signal: float
-    macd_hist: float
-    bb_upper: float
-    bb_middle: float
-    bb_lower: float
-    stoch_k: float
-    stoch_d: float
-    atr: float
-    obv: float
+    rsi: Optional[float] = 50.0
+    macd: Optional[float] = 0.0
+    macd_signal: Optional[float] = 0.0
+    macd_hist: Optional[float] = 0.0
+    bb_upper: Optional[float] = 0.0
+    bb_middle: Optional[float] = 0.0
+    bb_lower: Optional[float] = 0.0
+    stoch_k: Optional[float] = 50.0
+    stoch_d: Optional[float] = 50.0
+    atr: Optional[float] = 0.0
+    obv: Optional[float] = 0.0
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 class TradingSignal(BaseModel):
