@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+import sys
 from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional, Any
@@ -20,8 +21,16 @@ import schedule
 import time
 from concurrent.futures import ThreadPoolExecutor
 
+# Add backend directory to path
+sys.path.append('/app/backend')
+
 # Import the specialized ML engine
-from ml_engine import EnsembleMLEngine
+try:
+    from ml_engine import EnsembleMLEngine
+    ML_ENGINE_AVAILABLE = True
+except ImportError as e:
+    print(f"ML Engine not available: {e}")
+    ML_ENGINE_AVAILABLE = False
 
 # ML Libraries
 import xgboost as xgb
@@ -54,7 +63,7 @@ trading_history = []
 model_performance = {}
 
 # Initialize the specialized ML engine
-ensemble_ml_engine = EnsembleMLEngine(news_api_key=NEWS_API_KEY)
+ensemble_ml_engine = EnsembleMLEngine(news_api_key=NEWS_API_KEY) if ML_ENGINE_AVAILABLE else None
 
 # Create the main app
 app = FastAPI(title="Advanced Trading Bot API", version="1.0.0")
