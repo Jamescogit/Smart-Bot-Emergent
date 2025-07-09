@@ -486,8 +486,10 @@ function App() {
 
       {/* Main Content */}
       <div className="p-6">
-        {/* Statistics Cards Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        {currentView === 'dashboard' ? (
+          <div>
+            {/* Statistics Cards Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
             <div className="flex items-center justify-between">
               <div>
