@@ -258,6 +258,7 @@ test_plan:
     - "Scalping RL Agent"
     - "Scalping RL Performance API"
     - "ObjectId Serialization Fix"
+    - "Persistent Learning Implementation"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
