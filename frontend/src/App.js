@@ -419,7 +419,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Notika-style Header */}
+      {/* Cash-style Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="flex justify-between items-center p-4">
           <div className="flex items-center space-x-4">
