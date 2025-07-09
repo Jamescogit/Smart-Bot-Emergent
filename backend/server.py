@@ -120,6 +120,41 @@ class Trade(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     close_timestamp: Optional[datetime] = None
 
+class EnhancedTrade(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    # Basic trade info
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    symbol: str
+    action: str  # BUY, SELL, HOLD
+    entry_price: float
+    exit_price: Optional[float] = None
+    pips_gained: Optional[float] = None
+    percentage_pl: Optional[float] = None
+    
+    # ML and Decision info
+    confidence: float = 0.0
+    decision_factors: str = ""  # Summary of RSI, MACD, etc.
+    trade_type: str = "Scalping"  # Scalping, Swing, Position
+    forecast_trend: str = "NEUTRAL"  # UP, DOWN, NEUTRAL from Prophet
+    news_sentiment: float = 0.0  # -1 to 1 sentiment score
+    tweet_bias: str = "NEUTRAL"  # Expert tweet sentiment
+    bot_strategy: str = "Default"  # Strategy used
+    ml_decision: str = "RL Agent"  # Model that influenced most
+    risk_level: str = "Medium"  # Low, Medium, High
+    
+    # Trade management
+    quantity: float = 1.0
+    profit: Optional[float] = None
+    is_closed: bool = False
+    close_timestamp: Optional[datetime] = None
+    exit_reason: str = "Open"  # TP hit, SL hit, Timeout, Manual rule
+    
+    # Additional context
+    rsi_value: Optional[float] = None
+    macd_value: Optional[float] = None
+    volume_spike: Optional[float] = None
+    volatility: Optional[float] = None
+
 class TweetInput(BaseModel):
     tweet: str
     symbol: str
