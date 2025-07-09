@@ -1853,7 +1853,8 @@ def convert_trades_to_csv(trades: List[Dict]) -> str:
         "⏳ Exit Price", "📊 Pips Gained", "💹 % P/L", "🤖 Confidence",
         "📋 Decision Factors", "📦 Trade Type", "📉 Forecast Trend",
         "📰 News Sentiment", "🗣️ Tweet Bias", "💡 Bot Strategy",
-        "🧠 ML Decision", "📦 Risk Level", "🧾 Exit Reason"
+        "🧠 ML Decision", "📦 Risk Level", "🧾 Exit Reason",
+        "📊 RSI Value", "📈 MACD Value", "📊 Volume Spike", "⚡ Volatility"
     ]
     
     csv_lines = [",".join(headers)]
