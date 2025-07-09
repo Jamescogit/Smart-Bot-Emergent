@@ -24,9 +24,10 @@ from concurrent.futures import ThreadPoolExecutor
 # Add backend directory to path
 sys.path.append('/app/backend')
 
-# Import the specialized ML engine
+# Import the specialized ML engine and training simulator
 try:
     from ml_engine import EnsembleMLEngine
+    from training_simulator import TrainingSimulator
     ML_ENGINE_AVAILABLE = True
 except ImportError as e:
     print(f"ML Engine not available: {e}")
@@ -62,8 +63,9 @@ price_history = {}
 trading_history = []
 model_performance = {}
 
-# Initialize the specialized ML engine
+# Initialize the specialized ML engine and training simulator
 ensemble_ml_engine = EnsembleMLEngine(news_api_key=NEWS_API_KEY) if ML_ENGINE_AVAILABLE else None
+training_simulator = TrainingSimulator(db)
 
 # Create the main app
 app = FastAPI(title="Advanced Trading Bot API", version="1.0.0")
