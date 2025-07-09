@@ -756,6 +756,85 @@ def generate_sample_candlestick_data(symbol: str, interval: str = '1m') -> List[
     
     return candlesticks
 
+def get_strategy_label(indicators, sentiment=0, tweet_bias="NEUTRAL", events=None, action="HOLD"):
+    """
+    Determine strategy label based on actual trading conditions
+    """
+    if events is None:
+        events = []
+    
+    rsi = indicators.get("RSI", 50)
+    macd = indicators.get("MACD", 0)
+    macd_signal = indicators.get("MACD_signal", 0)
+    macd_hist = indicators.get("MACD_hist", 0)
+    atr = indicators.get("ATR", 0)
+    bb_upper = indicators.get("BB_upper", 0)
+    bb_lower = indicators.get("BB_lower", 0)
+    price = indicators.get("price", 0)
+    volume = indicators.get("volume", 0)
+    
+    # RSI Reversal Strategy
+    if rsi < 30 and action == "BUY":
+        return "RSI Reversal"
+    elif rsi > 70 and action == "SELL":
+        return "RSI Reversal"
+    
+    # MACD Crossover Strategy
+    elif abs(macd_hist) > 0.001 and ((macd > macd_signal and action == "BUY") or (macd < macd_signal and action == "SELL")):
+        return "MACD Crossover"
+    
+    # Tweet Momentum Strategy
+    elif tweet_bias == "BULLISH" and sentiment > 0.1 and action == "BUY":
+        return "Tweet Momentum"
+    elif tweet_bias == "BEARISH" and sentiment < -0.1 and action == "SELL":
+        return "Tweet Momentum"
+    
+    # Event Reaction Strategy
+    elif events and any(e.get('impact', '') == "High" for e in events):
+        return "Event Reaction"
+    
+    # News Sentiment Strategy
+    elif abs(sentiment) > 0.2:
+        if sentiment > 0.2 and action == "BUY":
+            return "News Sentiment Boost"
+        elif sentiment < -0.2 and action == "SELL":
+            return "News Sentiment Boost"
+    
+    # Breakout Strategy
+    elif atr > 0.002 and volume > 50000:
+        if price > bb_upper and action == "BUY":
+            return "Breakout"
+        elif price < bb_lower and action == "SELL":
+            return "Breakout"
+    
+    # Bollinger Squeeze Strategy
+    elif bb_upper > 0 and bb_lower > 0 and (bb_upper - bb_lower) / price < 0.02:
+        return "Bollinger Squeeze"
+    
+    # Volume Spike Strategy
+    elif volume > 100000:  # High volume
+        return "Volume Spike Trade"
+    
+    # Mean Reversion Strategy
+    elif 35 < rsi < 65 and abs(macd_hist) < 0.0005:
+        return "Mean Reversion"
+    
+    # Trend Continuation Strategy
+    elif atr > 0.001 and ((rsi > 50 and action == "BUY") or (rsi < 50 and action == "SELL")):
+        return "Trend Continuation"
+    
+    # Double Confirmation Strategy
+    elif ((rsi < 35 and macd > macd_signal) or (rsi > 65 and macd < macd_signal)) and abs(sentiment) > 0.1:
+        return "Double Confirmation"
+    
+    # Scalping Opportunity (default for quick trades)
+    elif abs(macd_hist) > 0.0003 or abs(sentiment) > 0.05:
+        return "Scalping Opportunity"
+    
+    # Default fallback
+    else:
+        return "General Strategy"
+
 def create_enhanced_trade_record(
     symbol: str,
     action: str,
