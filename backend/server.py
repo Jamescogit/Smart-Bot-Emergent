@@ -1160,6 +1160,8 @@ async def populate_sample_data():
         
         # Generate sample trades
         sample_trades = []
+        strategies = ['RSI Reversal', 'MACD Crossover', 'Momentum Breakout', 'Support Resistance', 'Default']
+        
         for i in range(50):
             symbol = np.random.choice(SYMBOLS)
             action = np.random.choice(['BUY', 'SELL'])
@@ -1182,7 +1184,8 @@ async def populate_sample_data():
                 'pips': pips,
                 'is_closed': True,
                 'timestamp': datetime.now() - timedelta(days=np.random.randint(1, 30)),
-                'close_timestamp': datetime.now() - timedelta(days=np.random.randint(0, 29))
+                'close_timestamp': datetime.now() - timedelta(days=np.random.randint(0, 29)),
+                'bot_strategy': np.random.choice(strategies)
             }
             sample_trades.append(trade)
         
