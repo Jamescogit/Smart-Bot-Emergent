@@ -502,18 +502,18 @@ function App() {
                   </div>
                 </div>
               </div>
-          
-          <div className="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Win Rate</p>
-                <p className="text-2xl font-bold text-gray-900">{performanceMetrics.winRate || 0}%</p>
+              
+              <div className="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Win Rate</p>
+                    <p className="text-2xl font-bold text-gray-900">{performanceMetrics.winRate || 0}%</p>
+                  </div>
+                  <div className="p-3 bg-green-100 rounded-full">
+                    <Award className="w-6 h-6 text-green-600" />
+                  </div>
+                </div>
               </div>
-              <div className="p-3 bg-green-100 rounded-full">
-                <Award className="w-6 h-6 text-green-600" />
-              </div>
-            </div>
-          </div>
           
           <div className="bg-white rounded-lg shadow p-6 border-l-4 border-purple-500">
             <div className="flex items-center justify-between">
