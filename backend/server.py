@@ -859,20 +859,62 @@ async def get_trading_signal(symbol: str):
         
         indicators = calculate_technical_indicators(historical_data)
         
-        # Get ensemble prediction from specialized ML models
-        ensemble_prediction = await ensemble_ml_engine.get_ensemble_prediction(
-            symbol, market_data, indicators
-        )
+        # Use ensemble ML engine if available
+        if ML_ENGINE_AVAILABLE and ensemble_ml_engine:
+            # Get ensemble prediction from specialized ML models
+            ensemble_prediction = await ensemble_ml_engine.get_ensemble_prediction(
+                symbol, market_data, indicators
+            )
+            
+            # Extract ensemble decision
+            ensemble_decision = ensemble_prediction['ensemble_decision']
+            individual_predictions = ensemble_prediction['individual_predictions']
+            
+            # Prepare comprehensive trading signal
+            action = ensemble_decision.get('action', 'HOLD')
+            confidence = ensemble_decision.get('confidence', 0.5)
+            should_trade = ensemble_decision.get('should_trade', False)
+            reasons = ensemble_decision.get('reasons', [])
+            
+            # Prepare detailed ML predictions
+            ml_prediction = {
+                'ensemble': {
+                    'action': action,
+                    'confidence': confidence,
+                    'should_trade': should_trade,
+                    'strength': ensemble_decision.get('ensemble_strength', 'MEDIUM')
+                }
+            }
+            
+            # Add individual model predictions
+            if 'xgboost' in individual_predictions:
+                ml_prediction['xgboost'] = individual_predictions['xgboost']
+            
+            if 'catboost' in individual_predictions:
+                ml_prediction['catboost'] = individual_predictions['catboost']
+            
+            if 'tpot' in individual_predictions:
+                ml_prediction['tpot'] = individual_predictions['tpot']
+            
+            if 'prophet' in individual_predictions:
+                ml_prediction['prophet'] = individual_predictions['prophet']
         
-        # Extract ensemble decision
-        ensemble_decision = ensemble_prediction['ensemble_decision']
-        individual_predictions = ensemble_prediction['individual_predictions']
-        
-        # Prepare comprehensive trading signal
-        action = ensemble_decision.get('action', 'HOLD')
-        confidence = ensemble_decision.get('confidence', 0.5)
-        should_trade = ensemble_decision.get('should_trade', False)
-        reasons = ensemble_decision.get('reasons', [])
+        else:
+            # Fallback to basic trading signal
+            action = "HOLD"
+            confidence = 0.5
+            reasons = ["Using basic technical analysis (ML engine not available)"]
+            ml_prediction = {"fallback": True}
+            
+            # Use RL agent if available
+            if rl_agent:
+                features = prepare_ml_features(market_data, indicators, 0, 0)
+                state = features[:20]  # Use first 20 features
+                action_idx = rl_agent.act(state)
+                action_map = {0: "SELL", 1: "HOLD", 2: "BUY"}
+                action = action_map[action_idx]
+                confidence = 0.8
+                reasons.append(f"RL Agent decision: {action}")
         
         # Add technical analysis reasons
         rsi = indicators.get('RSI', 50)
@@ -889,38 +931,6 @@ async def get_trading_signal(symbol: str):
         elif macd < macd_signal:
             reasons.append("MACD bearish crossover")
         
-        # RL agent backup decision
-        if rl_agent and not should_trade:
-            features = prepare_ml_features(market_data, indicators, 0, 0)
-            state = features[:20]  # Use first 20 features
-            action_idx = rl_agent.act(state)
-            action_map = {0: "SELL", 1: "HOLD", 2: "BUY"}
-            rl_action = action_map[action_idx]
-            reasons.append(f"RL Agent backup: {rl_action}")
-        
-        # Prepare detailed ML predictions
-        ml_prediction = {
-            'ensemble': {
-                'action': action,
-                'confidence': confidence,
-                'should_trade': should_trade,
-                'strength': ensemble_decision.get('ensemble_strength', 'MEDIUM')
-            }
-        }
-        
-        # Add individual model predictions
-        if 'xgboost' in individual_predictions:
-            ml_prediction['xgboost'] = individual_predictions['xgboost']
-        
-        if 'catboost' in individual_predictions:
-            ml_prediction['catboost'] = individual_predictions['catboost']
-        
-        if 'tpot' in individual_predictions:
-            ml_prediction['tpot'] = individual_predictions['tpot']
-        
-        if 'prophet' in individual_predictions:
-            ml_prediction['prophet'] = individual_predictions['prophet']
-        
         return TradingSignal(
             symbol=symbol,
             action=action,
@@ -936,7 +946,7 @@ async def get_trading_signal(symbol: str):
             symbol=symbol,
             action="HOLD",
             confidence=0.5,
-            reasons=[f"Error in ensemble prediction: {str(e)}"],
+            reasons=[f"Error in prediction: {str(e)}"],
             ml_prediction={"error": str(e)}
         )
 
