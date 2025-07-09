@@ -2082,6 +2082,84 @@ async def clear_sample_data():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error clearing data: {str(e)}")
 
+@api_router.get("/trade-analysis")
+async def get_trade_analysis():
+    """Get trade analysis including top gainers and losers"""
+    try:
+        # Get all trades
+        trades = await db.trades.find().to_list(1000)
+        
+        if not trades:
+            return {
+                "top_gainers": [],
+                "top_losers": [],
+                "best_strategies": [],
+                "worst_strategies": [],
+                "summary": {
+                    "total_trades": 0,
+                    "avg_profit": 0,
+                    "avg_pips": 0
+                }
+            }
+        
+        # Sort by profit/pips
+        top_gainers = sorted(trades, key=lambda x: x.get('profit', 0), reverse=True)[:5]
+        top_losers = sorted(trades, key=lambda x: x.get('profit', 0))[:5]
+        
+        # Strategy analysis
+        strategy_performance = {}
+        for trade in trades:
+            strategy = trade.get('bot_strategy', 'Unknown')
+            if strategy not in strategy_performance:
+                strategy_performance[strategy] = {'profits': [], 'pips': []}
+            strategy_performance[strategy]['profits'].append(trade.get('profit', 0))
+            strategy_performance[strategy]['pips'].append(trade.get('pips', 0))
+        
+        # Calculate average performance per strategy
+        strategy_stats = []
+        for strategy, data in strategy_performance.items():
+            if data['profits']:
+                avg_profit = sum(data['profits']) / len(data['profits'])
+                avg_pips = sum(data['pips']) / len(data['pips'])
+                win_rate = len([p for p in data['profits'] if p > 0]) / len(data['profits']) * 100
+                
+                strategy_stats.append({
+                    'strategy': strategy,
+                    'avg_profit': round(avg_profit, 2),
+                    'avg_pips': round(avg_pips, 1),
+                    'win_rate': round(win_rate, 1),
+                    'trade_count': len(data['profits'])
+                })
+        
+        best_strategies = sorted(strategy_stats, key=lambda x: x['avg_profit'], reverse=True)[:3]
+        worst_strategies = sorted(strategy_stats, key=lambda x: x['avg_profit'])[:3]
+        
+        # Clean ObjectId for JSON serialization
+        for trade in top_gainers + top_losers:
+            if '_id' in trade:
+                trade['_id'] = str(trade['_id'])
+        
+        return {
+            "top_gainers": top_gainers,
+            "top_losers": top_losers,
+            "best_strategies": best_strategies,
+            "worst_strategies": worst_strategies,
+            "summary": {
+                "total_trades": len(trades),
+                "avg_profit": round(sum(t.get('profit', 0) for t in trades) / len(trades), 2),
+                "avg_pips": round(sum(t.get('pips', 0) for t in trades) / len(trades), 1)
+            }
+        }
+    except Exception as e:
+        return {
+            "error": str(e),
+            "top_gainers": [],
+            "top_losers": [],
+            "best_strategies": [],
+            "worst_strategies": [],
+            "summary": {"total_trades": 0, "avg_profit": 0, "avg_pips": 0}
+        }
+
 @api_router.get("/performance-metrics")
 async def get_performance_metrics():
     """Get comprehensive performance metrics"""
