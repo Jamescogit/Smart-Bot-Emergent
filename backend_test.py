@@ -4,7 +4,7 @@ import sys
 from datetime import datetime
 
 class TradingBotAPITester:
-    def __init__(self, base_url="https://2a7364d9-f987-4163-81cb-725f1a053226.preview.emergentagent.com"):
+    def __init__(self, base_url="http://localhost:8001"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.tests_run = 0
