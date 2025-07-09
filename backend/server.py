@@ -1446,36 +1446,77 @@ def check_correlation(symbol1: str, symbol2: str, data1: pd.DataFrame, data2: pd
 
 # Initialize global components
 async def initialize_system():
-    """Initialize the trading system"""
+    """Initialize the trading system with persistent learning"""
     global rl_agent, ml_models, price_history, scalping_rl_agent, candlestick_history
     
-    # Initialize RL agent
-    rl_agent = RLTradingAgent(state_size=20)
+    print("🚀 Initializing Cash Trading Bot System...")
     
-    # Initialize Scalping RL agent
-    scalping_rl_agent = ScalpingRLAgent(state_size=15)
+    # First, try to load existing data from previous sessions
+    load_all_persistent_data()
     
-    # Initialize price history
-    for symbol in SYMBOLS:
-        price_history[symbol] = deque(maxlen=100)
+    # Initialize RL agent (only if not loaded from file)
+    if rl_agent is None:
+        rl_agent = RLTradingAgent(state_size=20)
+        print("🆕 Created new RL agent")
+    else:
+        print("♻️ Using restored RL agent from previous session")
+    
+    # Initialize Scalping RL agent (only if not loaded from file)
+    if scalping_rl_agent is None:
+        scalping_rl_agent = ScalpingRLAgent(state_size=15)
+        print("🆕 Created new Scalping RL agent")
+    else:
+        print("♻️ Using restored Scalping RL agent from previous session")
+    
+    # Initialize price history (only if not loaded from file)
+    if not price_history:
+        price_history = {}
+        for symbol in SYMBOLS:
+            price_history[symbol] = deque(maxlen=100)
+        print("🆕 Created new price history")
+    else:
+        print("♻️ Using restored price history from previous session")
     
     # Initialize candlestick history
     for symbol in SYMBOLS:
-        candlestick_history[symbol] = deque(maxlen=100)
+        if symbol not in candlestick_history:
+            candlestick_history[symbol] = deque(maxlen=100)
     
-    # Initialize ML models dictionary
-    ml_models = {
-        'xgboost': None,
-        'catboost': None,
-        'prophet': None,
-        'scaler': None
-    }
+    # Initialize ML models dictionary (only if not loaded)
+    if not ml_models:
+        ml_models = {
+            'xgboost': None,
+            'catboost': None,
+            'prophet': None,
+            'scaler': None
+        }
+        print("🆕 Created new ML models dictionary")
+    else:
+        print("♻️ Using restored ML models from previous session")
     
-    # Populate some sample trading data
-    await populate_sample_data()
+    # Populate some sample trading data (only if no data exists)
+    try:
+        existing_trades = await db.trades.count_documents({})
+        if existing_trades == 0:
+            await populate_sample_data()
+            print("🆕 Generated sample trading data")
+        else:
+            print(f"♻️ Found {existing_trades} existing trades in database")
+    except Exception as e:
+        print(f"⚠️ Error checking existing trades: {e}")
+        await populate_sample_data()
     
-    print("Trading system initialized successfully!")
-    print("Scalping RL agent initialized for high-frequency trading")
+    print("✅ Trading system initialized successfully with persistent learning!")
+    print("📊 System Status:")
+    print(f"   - RL Agent: {'Restored' if rl_agent.epsilon < 1.0 else 'New'}")
+    print(f"   - Scalping RL Agent: {'Restored' if scalping_rl_agent.epsilon < 1.0 else 'New'}")
+    print(f"   - ML Models: {len([k for k, v in ml_models.items() if v is not None])} active")
+    print(f"   - Feature History: {len(feature_history)} records")
+    print(f"   - Price History: {len(price_history)} symbols")
+    
+    # Start periodic saving
+    import asyncio
+    asyncio.create_task(periodic_save_task())
 
 async def populate_sample_data():
     """Populate database with sample trading data"""
