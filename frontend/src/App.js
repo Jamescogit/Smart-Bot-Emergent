@@ -373,6 +373,7 @@ function App() {
     fetchTechnicalIndicators(selectedSymbol);
     fetchTradingSignals(selectedSymbol);
     fetchTradingHistory();
+    fetchPerformanceMetrics();
     fetchModelStatus();
     fetchTrainingStatus();
     fetchTrainingMetrics();
