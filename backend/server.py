@@ -1583,41 +1583,62 @@ async def get_scalping_signal(symbol: str):
         lows = [candle['low'] for candle in recent_candles]
         volatility = (max(highs) - min(lows)) / current_price
         
-        # Generate scalping signal
+        # Generate scalping signal with tight SL/TP
         action = "HOLD"
         confidence = 0.5
         reasons = []
         
-        # Define pip value based on symbol
-        pip_values = {
-            'XAUUSD': 0.1,
-            'EURUSD': 0.0001,
-            'EURJPY': 0.01,
-            'USDJPY': 0.01,
-            'NASDAQ': 1.0
-        }
-        
-        pip_value = pip_values.get(symbol, 0.01)
-        
-        if momentum > 0.0005:  # Strong upward momentum
-            action = "BUY"
-            confidence = min(0.8, 0.5 + momentum * 1000)
-            reasons.append("Strong upward momentum detected")
-            stop_loss = current_price - (pip_value * 5)  # 5 pip stop loss
-            take_profit = current_price + (pip_value * 10)  # 10 pip take profit
-        elif momentum < -0.0005:  # Strong downward momentum
-            action = "SELL"
-            confidence = min(0.8, 0.5 + abs(momentum) * 1000)
-            reasons.append("Strong downward momentum detected")
-            stop_loss = current_price + (pip_value * 5)  # 5 pip stop loss
-            take_profit = current_price - (pip_value * 10)  # 10 pip take profit
+        # Scalping-optimized pip values for tight SL/TP
+        if symbol == 'XAUUSD':
+            # For XAUUSD scalping: 2-3 pip SL, 4-6 pip TP
+            sl_pips = 2.5
+            tp_pips = 5.0
+            pip_value = 0.1
+        elif symbol == 'EURUSD':
+            # For EURUSD scalping: 3-5 pip SL, 6-10 pip TP
+            sl_pips = 4
+            tp_pips = 8
+            pip_value = 0.0001
+        elif symbol in ['USDJPY', 'EURJPY']:
+            # For JPY pairs: 2-3 pip SL, 4-6 pip TP
+            sl_pips = 3
+            tp_pips = 6
+            pip_value = 0.01
         else:
-            stop_loss = current_price - (pip_value * 2)
-            take_profit = current_price + (pip_value * 2)
-            reasons.append("Consolidation - waiting for breakout")
+            # Default for other symbols
+            sl_pips = 5
+            tp_pips = 10
+            pip_value = 1.0
         
-        if volatility > 0.002:
-            reasons.append("High volatility - good for scalping")
+        # Enhanced scalping momentum detection
+        if momentum > 0.0003:  # Reduced threshold for scalping sensitivity
+            action = "BUY"
+            confidence = min(0.85, 0.6 + momentum * 2000)  # Higher confidence scaling
+            reasons.append("Scalping momentum: Strong upward movement")
+            stop_loss = current_price - (pip_value * sl_pips)
+            take_profit = current_price + (pip_value * tp_pips)
+        elif momentum < -0.0003:  # Reduced threshold for scalping sensitivity
+            action = "SELL"
+            confidence = min(0.85, 0.6 + abs(momentum) * 2000)
+            reasons.append("Scalping momentum: Strong downward movement")
+            stop_loss = current_price + (pip_value * sl_pips)
+            take_profit = current_price - (pip_value * tp_pips)
+        else:
+            # Tight range for consolidation scalping
+            stop_loss = current_price - (pip_value * (sl_pips * 0.5))
+            take_profit = current_price + (pip_value * (tp_pips * 0.5))
+            reasons.append("Consolidation scalping - tight range")
+        
+        # Additional scalping conditions
+        if volatility > 0.001:  # Lower threshold for scalping
+            reasons.append("Good volatility for scalping")
+            confidence += 0.15
+        
+        # Volume-based scalping enhancement
+        volumes = [candle['volume'] for candle in recent_candles]
+        avg_volume = sum(volumes) / len(volumes)
+        if volumes[-1] > avg_volume * 1.2:  # 20% volume increase
+            reasons.append("Volume spike detected")
             confidence += 0.1
         
         return ScalpingSignal(
