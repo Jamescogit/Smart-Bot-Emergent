@@ -2197,6 +2197,45 @@ async def get_bot_health():
             "system_health": {"status": "error"}
         }
 
+@api_router.post("/activate-model/{model_name}")
+async def activate_model(model_name: str):
+    """Activate a specific ML model"""
+    try:
+        global ml_models
+        
+        if model_name not in ['xgboost', 'catboost', 'prophet', 'tpot']:
+            raise HTTPException(status_code=400, detail="Invalid model name")
+        
+        # Simple activation - in real implementation, you'd load the actual model
+        ml_models[model_name] = f"activated_{model_name}_model"
+        
+        return {
+            "message": f"{model_name} model activated successfully",
+            "model_name": model_name,
+            "status": "active"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error activating model: {str(e)}")
+
+@api_router.post("/deactivate-model/{model_name}")
+async def deactivate_model(model_name: str):
+    """Deactivate a specific ML model"""
+    try:
+        global ml_models
+        
+        if model_name not in ['xgboost', 'catboost', 'prophet', 'tpot']:
+            raise HTTPException(status_code=400, detail="Invalid model name")
+        
+        ml_models[model_name] = None
+        
+        return {
+            "message": f"{model_name} model deactivated successfully",
+            "model_name": model_name,
+            "status": "inactive"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deactivating model: {str(e)}")
+
 @api_router.get("/performance-metrics")
 async def get_performance_metrics():
     """Get comprehensive performance metrics"""
