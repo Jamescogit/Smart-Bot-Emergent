@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { TrendingUp, TrendingDown, Activity, Brain, Target, AlertCircle, Download, Upload, Play, Pause, RefreshCw } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Area, AreaChart } from 'recharts';
+import { TrendingUp, TrendingDown, Activity, Brain, Target, AlertCircle, Download, Upload, Play, Pause, RefreshCw, Award, Zap, Users, DollarSign, TrendingDownIcon, BarChart3, PieChart as PieChartIcon } from 'lucide-react';
 import './App.css';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
 const API = `${BACKEND_URL}/api`;
 
 const SYMBOLS = ['XAUUSD', 'EURUSD', 'EURJPY', 'USDJPY', 'NASDAQ'];
+
+// Colors for Notika-style theme
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
 function App() {
   const [selectedSymbol, setSelectedSymbol] = useState('XAUUSD');
@@ -29,7 +32,16 @@ function App() {
     riskPercentage: 2
   });
   
+  // New state for training simulation
+  const [trainingStatus, setTrainingStatus] = useState({});
+  const [trainingMetrics, setTrainingMetrics] = useState({});
+  const [liveTradeFeeds, setLiveTradeFeeds] = useState([]);
+  const [modelComparison, setModelComparison] = useState({});
+  const [mockTrades, setMockTrades] = useState([]);
+  const [showTrainingPanel, setShowTrainingPanel] = useState(false);
+  
   const intervalRef = useRef(null);
+  const trainingIntervalRef = useRef(null);
 
   // Fetch market data for all symbols
   const fetchMarketData = async () => {
@@ -129,18 +141,105 @@ function App() {
     }
   };
 
+  // Fetch training status
+  const fetchTrainingStatus = async () => {
+    try {
+      const response = await axios.get(`${API}/training-status`);
+      setTrainingStatus(response.data);
+    } catch (error) {
+      console.error('Error fetching training status:', error);
+    }
+  };
+
+  // Fetch training metrics
+  const fetchTrainingMetrics = async () => {
+    try {
+      const response = await axios.get(`${API}/training-metrics`);
+      setTrainingMetrics(response.data);
+    } catch (error) {
+      console.error('Error fetching training metrics:', error);
+    }
+  };
+
+  // Fetch live trade feeds
+  const fetchLiveTradeFeeds = async () => {
+    try {
+      const response = await axios.get(`${API}/live-trade-feed`);
+      setLiveTradeFeeds(response.data);
+    } catch (error) {
+      console.error('Error fetching live trade feeds:', error);
+    }
+  };
+
+  // Fetch model comparison
+  const fetchModelComparison = async () => {
+    try {
+      const response = await axios.get(`${API}/model-comparison`);
+      setModelComparison(response.data);
+    } catch (error) {
+      console.error('Error fetching model comparison:', error);
+    }
+  };
+
+  // Fetch mock trades
+  const fetchMockTrades = async () => {
+    try {
+      const response = await axios.get(`${API}/mock-trades`);
+      setMockTrades(response.data.trades || []);
+    } catch (error) {
+      console.error('Error fetching mock trades:', error);
+    }
+  };
+
   // Train ML models
   const trainModels = async () => {
     setIsTraining(true);
+    setShowTrainingPanel(true);
     try {
       const response = await axios.post(`${API}/train-models`);
-      alert(`Models trained successfully! XGBoost: ${response.data.xgboost_accuracy.toFixed(3)}, CatBoost: ${response.data.catboost_accuracy.toFixed(3)}`);
-      await fetchModelStatus();
+      console.log('Training started:', response.data);
+      
+      // Start training monitoring
+      startTrainingMonitoring();
+      
     } catch (error) {
       console.error('Error training models:', error);
       alert('Error training models');
     } finally {
       setIsTraining(false);
+    }
+  };
+
+  // Start training monitoring
+  const startTrainingMonitoring = () => {
+    if (trainingIntervalRef.current) {
+      clearInterval(trainingIntervalRef.current);
+    }
+    
+    trainingIntervalRef.current = setInterval(async () => {
+      await fetchTrainingStatus();
+      await fetchTrainingMetrics();
+      await fetchLiveTradeFeeds();
+      await fetchModelComparison();
+      await fetchMockTrades();
+      await fetchModelStatus();
+      
+      // Stop monitoring if training is complete
+      if (trainingStatus.stage === 'completed' || trainingStatus.stage === 'stopped') {
+        clearInterval(trainingIntervalRef.current);
+      }
+    }, 1000); // Update every second during training
+  };
+
+  // Stop training
+  const stopTraining = async () => {
+    try {
+      await axios.post(`${API}/stop-training`);
+      if (trainingIntervalRef.current) {
+        clearInterval(trainingIntervalRef.current);
+      }
+    } catch (error) {
+      console.error('Error stopping training:', error);
     }
   };
 
@@ -205,12 +304,19 @@ function App() {
         fetchTradingSignals(selectedSymbol);
         fetchTradingHistory();
         fetchModelStatus();
+        
+        // Fetch training data if training is active
+        if (trainingStatus.is_training) {
+          fetchTrainingStatus();
+          fetchTrainingMetrics();
+          fetchLiveTradeFeeds();
+        }
       }, 3000); // Update every 3 seconds
       
       intervalRef.current = interval;
       return () => clearInterval(interval);
     }
-  }, [isAutoRefresh, selectedSymbol]);
+  }, [isAutoRefresh, selectedSymbol, trainingStatus.is_training]);
 
   // Initial data fetch
   useEffect(() => {
@@ -219,7 +325,22 @@ function App() {
     fetchTradingSignals(selectedSymbol);
     fetchTradingHistory();
     fetchModelStatus();
+    fetchTrainingStatus();
+    fetchTrainingMetrics();
+    fetchModelComparison();
   }, [selectedSymbol]);
+
+  // Cleanup intervals
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      if (trainingIntervalRef.current) {
+        clearInterval(trainingIntervalRef.current);
+      }
+    };
+  }, []);
 
   // Get signal color
   const getSignalColor = (action) => {
@@ -239,20 +360,23 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      {/* Header */}
-      <header className="bg-gray-800 p-4 border-b border-gray-700">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Brain className="w-8 h-8 text-blue-500" />
-            Advanced Trading Bot
-          </h1>
+    <div className="min-h-screen bg-gray-100">
+      {/* Notika-style Header */}
+      <header className="bg-white shadow-sm border-b">
+        <div className="flex justify-between items-center p-4">
+          <div className="flex items-center space-x-4">
+            <div className="text-2xl font-bold text-gray-800">
+              <Brain className="w-8 h-8 text-blue-600 inline-block mr-2" />
+              Notika Trading Bot
+            </div>
+            <div className="text-sm text-gray-500">Advanced ML Trading System</div>
+          </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center space-x-4">
             <select 
               value={selectedSymbol} 
               onChange={(e) => setSelectedSymbol(e.target.value)}
-              className="bg-gray-700 text-white p-2 rounded border border-gray-600"
+              className="bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {SYMBOLS.map(symbol => (
                 <option key={symbol} value={symbol}>{symbol}</option>
@@ -261,307 +385,475 @@ function App() {
             
             <button
               onClick={() => setIsAutoRefresh(!isAutoRefresh)}
-              className={`flex items-center gap-2 px-4 py-2 rounded ${isAutoRefresh ? 'bg-green-600' : 'bg-gray-600'}`}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${
+                isAutoRefresh 
+                  ? 'bg-green-500 text-white' 
+                  : 'bg-gray-200 text-gray-700'
+              }`}
             >
               {isAutoRefresh ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-              {isAutoRefresh ? 'Pause' : 'Resume'}
+              <span>{isAutoRefresh ? 'Live' : 'Paused'}</span>
             </button>
           </div>
         </div>
       </header>
 
-      {/* Main Dashboard */}
-      <div className="p-6 space-y-6">
-        {/* Market Data Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* Main Content */}
+      <div className="p-6">
+        {/* Statistics Cards Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Trades</p>
+                <p className="text-2xl font-bold text-gray-900">{performanceMetrics.totalTrades || 0}</p>
+              </div>
+              <div className="p-3 bg-blue-100 rounded-full">
+                <BarChart3 className="w-6 h-6 text-blue-600" />
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Win Rate</p>
+                <p className="text-2xl font-bold text-gray-900">{performanceMetrics.winRate || 0}%</p>
+              </div>
+              <div className="p-3 bg-green-100 rounded-full">
+                <Award className="w-6 h-6 text-green-600" />
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow p-6 border-l-4 border-purple-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Profit</p>
+                <p className="text-2xl font-bold text-gray-900">${performanceMetrics.totalProfit || 0}</p>
+              </div>
+              <div className="p-3 bg-purple-100 rounded-full">
+                <DollarSign className="w-6 h-6 text-purple-600" />
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow p-6 border-l-4 border-orange-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Pips</p>
+                <p className="text-2xl font-bold text-gray-900">{performanceMetrics.totalPips || 0}</p>
+              </div>
+              <div className="p-3 bg-orange-100 rounded-full">
+                <TrendingUp className="w-6 h-6 text-orange-600" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Market Data Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
           {SYMBOLS.map(symbol => (
-            <div key={symbol} className={`bg-gray-800 p-4 rounded-lg border-2 ${selectedSymbol === symbol ? 'border-blue-500' : 'border-gray-700'}`}>
-              <h3 className="font-semibold text-lg mb-2">{symbol}</h3>
+            <div key={symbol} className={`bg-white rounded-lg shadow p-4 cursor-pointer transition-all duration-200 ${
+              selectedSymbol === symbol ? 'ring-2 ring-blue-500' : ''
+            }`} onClick={() => setSelectedSymbol(symbol)}>
+              <h3 className="font-semibold text-gray-700 mb-2">{symbol}</h3>
               {marketData[symbol] && (
                 <>
-                  <p className="text-2xl font-bold">${marketData[symbol].price?.toFixed(4)}</p>
-                  <p className={`text-sm ${marketData[symbol].change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  <p className="text-xl font-bold text-gray-900">${marketData[symbol].price?.toFixed(4)}</p>
+                  <p className={`text-sm ${marketData[symbol].change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {marketData[symbol].change >= 0 ? '+' : ''}{marketData[symbol].change?.toFixed(2)}%
                   </p>
-                  <p className="text-xs text-gray-400">Vol: {marketData[symbol].volume?.toLocaleString()}</p>
+                  <p className="text-xs text-gray-500">Vol: {marketData[symbol].volume?.toLocaleString()}</p>
                 </>
               )}
             </div>
           ))}
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Technical Analysis */}
-          <div className="space-y-6">
-            {/* Technical Indicators */}
-            <div className="bg-gray-800 p-6 rounded-lg">
-              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <Activity className="w-5 h-5" />
-                Technical Indicators
-              </h3>
-              {technicalIndicators[selectedSymbol] && (
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span>RSI:</span>
-                    <span className={`font-bold ${technicalIndicators[selectedSymbol].rsi < 30 ? 'text-green-500' : technicalIndicators[selectedSymbol].rsi > 70 ? 'text-red-500' : 'text-gray-300'}`}>
-                      {technicalIndicators[selectedSymbol].rsi?.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>MACD:</span>
-                    <span className="font-bold">{technicalIndicators[selectedSymbol].macd?.toFixed(4)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>ATR:</span>
-                    <span className="font-bold">{technicalIndicators[selectedSymbol].atr?.toFixed(4)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Stoch K:</span>
-                    <span className="font-bold">{technicalIndicators[selectedSymbol].stoch_k?.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Stoch D:</span>
-                    <span className="font-bold">{technicalIndicators[selectedSymbol].stoch_d?.toFixed(2)}</span>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Trading Signal */}
-            <div className="bg-gray-800 p-6 rounded-lg">
-              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <Target className="w-5 h-5" />
-                Trading Signal
-              </h3>
-              {tradingSignals[selectedSymbol] && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-2xl font-bold ${getSignalColor(tradingSignals[selectedSymbol].action)}`}>
-                      {tradingSignals[selectedSymbol].action}
-                    </span>
-                    {getSignalIcon(tradingSignals[selectedSymbol].action)}
-                  </div>
-                  <div className="text-sm text-gray-400">
-                    Confidence: {(tradingSignals[selectedSymbol].confidence * 100).toFixed(1)}%
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm font-semibold">Reasons:</p>
-                    {tradingSignals[selectedSymbol].reasons?.map((reason, idx) => (
-                      <p key={idx} className="text-xs text-gray-300">• {reason}</p>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* ML Model Status */}
-            <div className="bg-gray-800 p-6 rounded-lg">
-              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <Brain className="w-5 h-5" />
-                ML Models
-              </h3>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span>XGBoost:</span>
-                  <span className={`px-2 py-1 rounded text-xs ${modelStatus.xgboost_active ? 'bg-green-600' : 'bg-red-600'}`}>
-                    {modelStatus.xgboost_active ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>CatBoost:</span>
-                  <span className={`px-2 py-1 rounded text-xs ${modelStatus.catboost_active ? 'bg-green-600' : 'bg-red-600'}`}>
-                    {modelStatus.catboost_active ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Prophet:</span>
-                  <span className={`px-2 py-1 rounded text-xs ${modelStatus.prophet_active ? 'bg-green-600' : 'bg-red-600'}`}>
-                    {modelStatus.prophet_active ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>RL Agent:</span>
-                  <span className={`px-2 py-1 rounded text-xs ${modelStatus.rl_agent_active ? 'bg-green-600' : 'bg-red-600'}`}>
-                    {modelStatus.rl_agent_active ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-              </div>
-              <button
-                onClick={trainModels}
-                disabled={isTraining}
-                className="w-full mt-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 p-2 rounded flex items-center justify-center gap-2"
-              >
-                {isTraining ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                {isTraining ? 'Training...' : 'Train Models'}
-              </button>
-            </div>
-          </div>
-
-          {/* Middle Column - Charts */}
-          <div className="space-y-6">
-            {/* Price Chart */}
-            <div className="bg-gray-800 p-6 rounded-lg">
-              <h3 className="text-xl font-bold mb-4">Price Chart - {selectedSymbol}</h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={priceHistory}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                    <XAxis dataKey="time" stroke="#9CA3AF" />
-                    <YAxis stroke="#9CA3AF" />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151' }}
-                      labelStyle={{ color: '#F3F4F6' }}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="price" 
-                      stroke="#3B82F6" 
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Tweet Input */}
-            <div className="bg-gray-800 p-6 rounded-lg">
-              <h3 className="text-xl font-bold mb-4">Expert Tweet Analysis</h3>
-              <div className="space-y-4">
-                <textarea
-                  value={tweetInput}
-                  onChange={(e) => setTweetInput(e.target.value)}
-                  placeholder="Enter expert trader tweet for sentiment analysis..."
-                  className="w-full p-3 bg-gray-700 border border-gray-600 rounded resize-none"
-                  rows="3"
-                />
+        {/* Training Panel */}
+        {showTrainingPanel && (
+          <div className="bg-white rounded-lg shadow mb-6">
+            <div className="p-4 border-b">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-800">ML Training Center</h3>
                 <button
-                  onClick={submitTweet}
-                  className="w-full bg-blue-600 hover:bg-blue-700 p-2 rounded"
+                  onClick={() => setShowTrainingPanel(false)}
+                  className="text-gray-400 hover:text-gray-600"
                 >
-                  Analyze Tweet
+                  ×
                 </button>
               </div>
-              
-              {/* Recent Tweets */}
-              <div className="mt-4 space-y-2 max-h-40 overflow-y-auto">
-                {tweets.map(tweet => (
-                  <div key={tweet.id} className="bg-gray-700 p-3 rounded text-sm">
-                    <div className="flex justify-between items-start">
-                      <span className="font-semibold">{tweet.symbol}</span>
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        tweet.sentiment === 'BULLISH' ? 'bg-green-600' : 
-                        tweet.sentiment === 'BEARISH' ? 'bg-red-600' : 'bg-gray-600'
-                      }`}>
-                        {tweet.sentiment}
-                      </span>
+            </div>
+            
+            <div className="p-6">
+              {/* Training Status */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-700">Training Progress</span>
+                  <span className="text-sm text-gray-500">
+                    {trainingStatus.stage || 'Ready'} - Epoch {trainingStatus.epoch || 0}/{trainingStatus.total_epochs || 0}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${trainingStatus.progress_percentage || 0}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              {/* Model Performance Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                {Object.entries(trainingMetrics.model_metrics || {}).map(([modelName, metrics]) => (
+                  <div key={modelName} className="bg-gray-50 rounded-lg p-4">
+                    <h4 className="font-semibold text-gray-700 mb-2 capitalize">{modelName}</h4>
+                    <div className="space-y-1">
+                      <p className="text-sm">
+                        <span className="text-gray-600">Trades:</span> 
+                        <span className="font-bold ml-1">{metrics.trades || 0}</span>
+                      </p>
+                      <p className="text-sm">
+                        <span className="text-gray-600">Win Rate:</span> 
+                        <span className={`font-bold ml-1 ${metrics.win_rate >= 60 ? 'text-green-600' : metrics.win_rate >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>
+                          {(metrics.win_rate || 0).toFixed(1)}%
+                        </span>
+                      </p>
+                      <p className="text-sm">
+                        <span className="text-gray-600">Pips:</span> 
+                        <span className={`font-bold ml-1 ${metrics.total_pips >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {(metrics.total_pips || 0).toFixed(1)}
+                        </span>
+                      </p>
+                      <p className="text-sm">
+                        <span className="text-gray-600">Streak:</span> 
+                        <span className={`font-bold ml-1 ${metrics.current_streak >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {metrics.current_streak || 0}
+                        </span>
+                      </p>
                     </div>
-                    <p className="text-gray-300 mt-1">{tweet.tweet}</p>
-                    <p className="text-xs text-gray-400 mt-1">{tweet.timestamp}</p>
                   </div>
                 ))}
               </div>
+
+              {/* Live Trade Feed */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="font-semibold text-gray-700 mb-3">Live Training Trades</h4>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {liveTradeFeeds.slice(0, 10).map((trade, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-sm bg-white p-2 rounded">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-medium text-gray-700">{trade.model}</span>
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          trade.action === 'BUY' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {trade.action}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className={`font-bold ${trade.pips >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {trade.pips > 0 ? '+' : ''}{trade.pips.toFixed(1)} pips
+                        </span>
+                        <span className="text-gray-500">{new Date(trade.timestamp).toLocaleTimeString()}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Training Controls */}
+              <div className="flex justify-center space-x-4 mt-6">
+                {trainingStatus.is_training ? (
+                  <button
+                    onClick={stopTraining}
+                    className="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition-colors"
+                  >
+                    Stop Training
+                  </button>
+                ) : (
+                  <button
+                    onClick={trainModels}
+                    disabled={isTraining}
+                    className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 disabled:bg-gray-400 transition-colors"
+                  >
+                    {isTraining ? 'Starting...' : 'Start Training'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Main Dashboard Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column */}
+          <div className="space-y-6">
+            {/* Technical Indicators */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-4 border-b">
+                <h3 className="text-lg font-semibold text-gray-800">Technical Indicators</h3>
+              </div>
+              <div className="p-4">
+                {technicalIndicators[selectedSymbol] && (
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">RSI:</span>
+                      <span className={`font-bold ${technicalIndicators[selectedSymbol].rsi < 30 ? 'text-green-600' : technicalIndicators[selectedSymbol].rsi > 70 ? 'text-red-600' : 'text-gray-700'}`}>
+                        {technicalIndicators[selectedSymbol].rsi?.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">MACD:</span>
+                      <span className="font-bold text-gray-700">{technicalIndicators[selectedSymbol].macd?.toFixed(4)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">ATR:</span>
+                      <span className="font-bold text-gray-700">{technicalIndicators[selectedSymbol].atr?.toFixed(4)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Stoch K:</span>
+                      <span className="font-bold text-gray-700">{technicalIndicators[selectedSymbol].stoch_k?.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Stoch D:</span>
+                      <span className="font-bold text-gray-700">{technicalIndicators[selectedSymbol].stoch_d?.toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Trading Signal */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-4 border-b">
+                <h3 className="text-lg font-semibold text-gray-800">Trading Signal</h3>
+              </div>
+              <div className="p-4">
+                {tradingSignals[selectedSymbol] && (
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <span className={`text-xl font-bold ${getSignalColor(tradingSignals[selectedSymbol].action)}`}>
+                        {tradingSignals[selectedSymbol].action}
+                      </span>
+                      {getSignalIcon(tradingSignals[selectedSymbol].action)}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      Confidence: {(tradingSignals[selectedSymbol].confidence * 100).toFixed(1)}%
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-gray-700">Reasons:</p>
+                      {tradingSignals[selectedSymbol].reasons?.map((reason, idx) => (
+                        <p key={idx} className="text-xs text-gray-600">• {reason}</p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ML Model Status */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-4 border-b">
+                <h3 className="text-lg font-semibold text-gray-800">ML Models</h3>
+              </div>
+              <div className="p-4">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">XGBoost:</span>
+                    <span className={`px-2 py-1 rounded text-xs ${modelStatus.xgboost_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                      {modelStatus.xgboost_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">CatBoost:</span>
+                    <span className={`px-2 py-1 rounded text-xs ${modelStatus.catboost_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                      {modelStatus.catboost_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Prophet:</span>
+                    <span className={`px-2 py-1 rounded text-xs ${modelStatus.prophet_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                      {modelStatus.prophet_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">TPOT:</span>
+                    <span className={`px-2 py-1 rounded text-xs ${modelStatus.tpot_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                      {modelStatus.tpot_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">RL Agent:</span>
+                    <span className={`px-2 py-1 rounded text-xs ${modelStatus.rl_agent_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                      {modelStatus.rl_agent_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowTrainingPanel(true)}
+                  className="w-full mt-4 bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors"
+                >
+                  Open Training Center
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Right Column - Performance & Controls */}
+          {/* Middle Column */}
           <div className="space-y-6">
-            {/* Performance Metrics */}
-            <div className="bg-gray-800 p-6 rounded-lg">
-              <h3 className="text-xl font-bold mb-4">Performance Metrics</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span>Total Trades:</span>
-                  <span className="font-bold">{performanceMetrics.totalTrades || 0}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Win Rate:</span>
-                  <span className="font-bold text-green-500">{performanceMetrics.winRate || 0}%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Total Profit:</span>
-                  <span className={`font-bold ${parseFloat(performanceMetrics.totalProfit) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    ${performanceMetrics.totalProfit || 0}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Total Pips:</span>
-                  <span className={`font-bold ${parseFloat(performanceMetrics.totalPips) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    {performanceMetrics.totalPips || 0}
-                  </span>
+            {/* Price Chart */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-4 border-b">
+                <h3 className="text-lg font-semibold text-gray-800">Price Chart - {selectedSymbol}</h3>
+              </div>
+              <div className="p-4">
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={priceHistory}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                      <XAxis dataKey="time" stroke="#666" />
+                      <YAxis stroke="#666" />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: '#fff', 
+                          border: '1px solid #e0e0e0',
+                          borderRadius: '4px'
+                        }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="price" 
+                        stroke="#3b82f6" 
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
             </div>
 
+            {/* Tweet Analysis */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-4 border-b">
+                <h3 className="text-lg font-semibold text-gray-800">Expert Tweet Analysis</h3>
+              </div>
+              <div className="p-4">
+                <div className="space-y-4">
+                  <textarea
+                    value={tweetInput}
+                    onChange={(e) => setTweetInput(e.target.value)}
+                    placeholder="Enter expert trader tweet for sentiment analysis..."
+                    className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows="3"
+                  />
+                  <button
+                    onClick={submitTweet}
+                    className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors"
+                  >
+                    Analyze Tweet
+                  </button>
+                </div>
+                
+                {/* Recent Tweets */}
+                <div className="mt-4 space-y-2 max-h-40 overflow-y-auto">
+                  {tweets.map(tweet => (
+                    <div key={tweet.id} className="bg-gray-50 p-3 rounded-lg text-sm">
+                      <div className="flex justify-between items-start">
+                        <span className="font-medium text-gray-700">{tweet.symbol}</span>
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          tweet.sentiment === 'BULLISH' ? 'bg-green-100 text-green-800' : 
+                          tweet.sentiment === 'BEARISH' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {tweet.sentiment}
+                        </span>
+                      </div>
+                      <p className="text-gray-600 mt-1">{tweet.tweet}</p>
+                      <p className="text-xs text-gray-500 mt-1">{tweet.timestamp}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column */}
+          <div className="space-y-6">
             {/* Risk Management */}
-            <div className="bg-gray-800 p-6 rounded-lg">
-              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <AlertCircle className="w-5 h-5" />
-                Risk Management
-              </h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Max Drawdown (%)</label>
-                  <input
-                    type="number"
-                    value={riskSettings.maxDrawdown}
-                    onChange={(e) => setRiskSettings(prev => ({ ...prev, maxDrawdown: e.target.value }))}
-                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Position Size</label>
-                  <input
-                    type="number"
-                    value={riskSettings.positionSize}
-                    onChange={(e) => setRiskSettings(prev => ({ ...prev, positionSize: e.target.value }))}
-                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Risk per Trade (%)</label>
-                  <input
-                    type="number"
-                    value={riskSettings.riskPercentage}
-                    onChange={(e) => setRiskSettings(prev => ({ ...prev, riskPercentage: e.target.value }))}
-                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded"
-                  />
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-4 border-b">
+                <h3 className="text-lg font-semibold text-gray-800">Risk Management</h3>
+              </div>
+              <div className="p-4">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Max Drawdown (%)</label>
+                    <input
+                      type="number"
+                      value={riskSettings.maxDrawdown}
+                      onChange={(e) => setRiskSettings(prev => ({ ...prev, maxDrawdown: e.target.value }))}
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Position Size</label>
+                    <input
+                      type="number"
+                      value={riskSettings.positionSize}
+                      onChange={(e) => setRiskSettings(prev => ({ ...prev, positionSize: e.target.value }))}
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Risk per Trade (%)</label>
+                    <input
+                      type="number"
+                      value={riskSettings.riskPercentage}
+                      onChange={(e) => setRiskSettings(prev => ({ ...prev, riskPercentage: e.target.value }))}
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Controls */}
-            <div className="bg-gray-800 p-6 rounded-lg">
-              <h3 className="text-xl font-bold mb-4">Actions</h3>
-              <div className="space-y-3">
-                <button
-                  onClick={runBacktest}
-                  className="w-full bg-purple-600 hover:bg-purple-700 p-3 rounded flex items-center justify-center gap-2"
-                >
-                  <Activity className="w-4 h-4" />
-                  Run Backtest
-                </button>
-                <button
-                  onClick={exportTrades}
-                  className="w-full bg-green-600 hover:bg-green-700 p-3 rounded flex items-center justify-center gap-2"
-                >
-                  <Download className="w-4 h-4" />
-                  Export Trades (CSV)
-                </button>
+            {/* Actions */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-4 border-b">
+                <h3 className="text-lg font-semibold text-gray-800">Actions</h3>
+              </div>
+              <div className="p-4">
+                <div className="space-y-3">
+                  <button
+                    onClick={runBacktest}
+                    className="w-full bg-purple-500 text-white py-2 px-4 rounded-lg hover:bg-purple-600 transition-colors"
+                  >
+                    Run Backtest
+                  </button>
+                  <button
+                    onClick={exportTrades}
+                    className="w-full bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600 transition-colors"
+                  >
+                    Export Trades (CSV)
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Backtest Results */}
             {backtestResults && (
-              <div className="bg-gray-800 p-6 rounded-lg">
-                <h3 className="text-xl font-bold mb-4">Backtest Results</h3>
-                <div className="space-y-2 text-sm">
-                  <p><strong>Symbol:</strong> {backtestResults.symbol}</p>
-                  <p><strong>Total Trades:</strong> {backtestResults.total_trades}</p>
-                  <p><strong>Win Rate:</strong> {backtestResults.win_rate.toFixed(1)}%</p>
-                  <p><strong>Total Profit:</strong> ${backtestResults.total_profit.toFixed(2)}</p>
-                  <p><strong>Sharpe Ratio:</strong> {backtestResults.sharpe_ratio.toFixed(2)}</p>
+              <div className="bg-white rounded-lg shadow">
+                <div className="p-4 border-b">
+                  <h3 className="text-lg font-semibold text-gray-800">Backtest Results</h3>
+                </div>
+                <div className="p-4">
+                  <div className="space-y-2 text-sm">
+                    <p><span className="font-medium">Symbol:</span> {backtestResults.symbol}</p>
+                    <p><span className="font-medium">Total Trades:</span> {backtestResults.total_trades}</p>
+                    <p><span className="font-medium">Win Rate:</span> {backtestResults.win_rate.toFixed(1)}%</p>
+                    <p><span className="font-medium">Total Profit:</span> ${backtestResults.total_profit.toFixed(2)}</p>
+                    <p><span className="font-medium">Sharpe Ratio:</span> {backtestResults.sharpe_ratio.toFixed(2)}</p>
+                  </div>
                 </div>
               </div>
             )}
@@ -569,41 +861,43 @@ function App() {
         </div>
 
         {/* Trading History Table */}
-        <div className="bg-gray-800 p-6 rounded-lg">
-          <h3 className="text-xl font-bold mb-4">Recent Trading History</h3>
+        <div className="bg-white rounded-lg shadow mt-6">
+          <div className="p-4 border-b">
+            <h3 className="text-lg font-semibold text-gray-800">Recent Trading History</h3>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-700">
-                  <th className="text-left p-2">Symbol</th>
-                  <th className="text-left p-2">Action</th>
-                  <th className="text-left p-2">Entry Price</th>
-                  <th className="text-left p-2">Exit Price</th>
-                  <th className="text-left p-2">Profit</th>
-                  <th className="text-left p-2">Pips</th>
-                  <th className="text-left p-2">Status</th>
-                  <th className="text-left p-2">Time</th>
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="text-left p-4 font-medium text-gray-700">Symbol</th>
+                  <th className="text-left p-4 font-medium text-gray-700">Action</th>
+                  <th className="text-left p-4 font-medium text-gray-700">Entry Price</th>
+                  <th className="text-left p-4 font-medium text-gray-700">Exit Price</th>
+                  <th className="text-left p-4 font-medium text-gray-700">Profit</th>
+                  <th className="text-left p-4 font-medium text-gray-700">Pips</th>
+                  <th className="text-left p-4 font-medium text-gray-700">Status</th>
+                  <th className="text-left p-4 font-medium text-gray-700">Time</th>
                 </tr>
               </thead>
               <tbody>
                 {tradingHistory.slice(0, 10).map((trade, idx) => (
-                  <tr key={idx} className="border-b border-gray-700">
-                    <td className="p-2 font-medium">{trade.symbol}</td>
-                    <td className={`p-2 ${getSignalColor(trade.action)}`}>{trade.action}</td>
-                    <td className="p-2">${trade.entry_price?.toFixed(4)}</td>
-                    <td className="p-2">${trade.exit_price?.toFixed(4) || '-'}</td>
-                    <td className={`p-2 ${trade.profit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  <tr key={idx} className="border-b hover:bg-gray-50">
+                    <td className="p-4 font-medium text-gray-900">{trade.symbol}</td>
+                    <td className={`p-4 ${getSignalColor(trade.action)}`}>{trade.action}</td>
+                    <td className="p-4 text-gray-700">${trade.entry_price?.toFixed(4)}</td>
+                    <td className="p-4 text-gray-700">${trade.exit_price?.toFixed(4) || '-'}</td>
+                    <td className={`p-4 ${trade.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       ${trade.profit?.toFixed(2) || '-'}
                     </td>
-                    <td className={`p-2 ${trade.pips >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    <td className={`p-4 ${trade.pips >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {trade.pips?.toFixed(1) || '-'}
                     </td>
-                    <td className="p-2">
-                      <span className={`px-2 py-1 rounded text-xs ${trade.is_closed ? 'bg-gray-600' : 'bg-blue-600'}`}>
+                    <td className="p-4">
+                      <span className={`px-2 py-1 rounded text-xs ${trade.is_closed ? 'bg-gray-100 text-gray-800' : 'bg-blue-100 text-blue-800'}`}>
                         {trade.is_closed ? 'Closed' : 'Open'}
                       </span>
                     </td>
-                    <td className="p-2 text-gray-400">
+                    <td className="p-4 text-gray-500">
                       {new Date(trade.timestamp).toLocaleString()}
                     </td>
                   </tr>
