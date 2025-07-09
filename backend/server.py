@@ -834,71 +834,102 @@ async def get_technical_indicators(symbol: str):
 
 @api_router.get("/trading-signal/{symbol}")
 async def get_trading_signal(symbol: str):
-    """Get trading signal for a symbol"""
+    """Get advanced trading signal using ensemble ML engine"""
     if symbol not in SYMBOLS:
         raise HTTPException(status_code=400, detail="Invalid symbol")
     
-    # Get market data and indicators
-    market_data = await fetch_live_data(symbol)
-    if not market_data:
-        raise HTTPException(status_code=404, detail="Market data not found")
-    
-    historical_data = await fetch_historical_data(symbol)
-    if historical_data.empty:
-        raise HTTPException(status_code=404, detail="Historical data not found")
-    
-    indicators = calculate_technical_indicators(historical_data)
-    
-    # Prepare features
-    features = prepare_ml_features(market_data, indicators, 0, 0)
-    
-    # Generate trading signal
-    action = "HOLD"
-    confidence = 0.5
-    reasons = []
-    ml_prediction = {}
-    
-    # Use RL agent if available
-    if rl_agent:
-        state = features[:20]  # Use first 20 features
-        action_idx = rl_agent.act(state)
-        action_map = {0: "SELL", 1: "HOLD", 2: "BUY"}
-        action = action_map[action_idx]
-        confidence = 0.8
-        reasons.append(f"RL Agent decision: {action}")
-    
-    # Add technical analysis reasons
-    rsi = indicators.get('RSI', 50)
-    if rsi < 30:
-        reasons.append("RSI oversold")
-        if action == "HOLD":
-            action = "BUY"
-    elif rsi > 70:
-        reasons.append("RSI overbought")
-        if action == "HOLD":
-            action = "SELL"
-    
-    # MACD analysis
-    macd = indicators.get('MACD', 0)
-    macd_signal = indicators.get('MACD_signal', 0)
-    if macd > macd_signal:
-        reasons.append("MACD bullish crossover")
-    elif macd < macd_signal:
-        reasons.append("MACD bearish crossover")
-    
-    ml_prediction = {
-        'xgboost': {'prediction': action, 'confidence': confidence},
-        'catboost': {'prediction': action, 'confidence': confidence},
-        'prophet': {'prediction': action, 'confidence': confidence}
-    }
-    
-    return TradingSignal(
-        symbol=symbol,
-        action=action,
-        confidence=confidence,
-        reasons=reasons,
-        ml_prediction=ml_prediction
-    )
+    try:
+        # Get market data and indicators
+        market_data = await fetch_live_data(symbol)
+        if not market_data:
+            raise HTTPException(status_code=404, detail="Market data not found")
+        
+        historical_data = await fetch_historical_data(symbol)
+        if historical_data.empty:
+            raise HTTPException(status_code=404, detail="Historical data not found")
+        
+        indicators = calculate_technical_indicators(historical_data)
+        
+        # Get ensemble prediction from specialized ML models
+        ensemble_prediction = await ensemble_ml_engine.get_ensemble_prediction(
+            symbol, market_data, indicators
+        )
+        
+        # Extract ensemble decision
+        ensemble_decision = ensemble_prediction['ensemble_decision']
+        individual_predictions = ensemble_prediction['individual_predictions']
+        
+        # Prepare comprehensive trading signal
+        action = ensemble_decision.get('action', 'HOLD')
+        confidence = ensemble_decision.get('confidence', 0.5)
+        should_trade = ensemble_decision.get('should_trade', False)
+        reasons = ensemble_decision.get('reasons', [])
+        
+        # Add technical analysis reasons
+        rsi = indicators.get('RSI', 50)
+        if rsi < 30:
+            reasons.append("RSI oversold (technical)")
+        elif rsi > 70:
+            reasons.append("RSI overbought (technical)")
+        
+        # MACD analysis
+        macd = indicators.get('MACD', 0)
+        macd_signal = indicators.get('MACD_signal', 0)
+        if macd > macd_signal:
+            reasons.append("MACD bullish crossover")
+        elif macd < macd_signal:
+            reasons.append("MACD bearish crossover")
+        
+        # RL agent backup decision
+        if rl_agent and not should_trade:
+            features = prepare_ml_features(market_data, indicators, 0, 0)
+            state = features[:20]  # Use first 20 features
+            action_idx = rl_agent.act(state)
+            action_map = {0: "SELL", 1: "HOLD", 2: "BUY"}
+            rl_action = action_map[action_idx]
+            reasons.append(f"RL Agent backup: {rl_action}")
+        
+        # Prepare detailed ML predictions
+        ml_prediction = {
+            'ensemble': {
+                'action': action,
+                'confidence': confidence,
+                'should_trade': should_trade,
+                'strength': ensemble_decision.get('ensemble_strength', 'MEDIUM')
+            }
+        }
+        
+        # Add individual model predictions
+        if 'xgboost' in individual_predictions:
+            ml_prediction['xgboost'] = individual_predictions['xgboost']
+        
+        if 'catboost' in individual_predictions:
+            ml_prediction['catboost'] = individual_predictions['catboost']
+        
+        if 'tpot' in individual_predictions:
+            ml_prediction['tpot'] = individual_predictions['tpot']
+        
+        if 'prophet' in individual_predictions:
+            ml_prediction['prophet'] = individual_predictions['prophet']
+        
+        return TradingSignal(
+            symbol=symbol,
+            action=action,
+            confidence=confidence,
+            reasons=reasons,
+            ml_prediction=ml_prediction
+        )
+        
+    except Exception as e:
+        print(f"Error generating trading signal for {symbol}: {e}")
+        # Fallback to basic signal
+        return TradingSignal(
+            symbol=symbol,
+            action="HOLD",
+            confidence=0.5,
+            reasons=[f"Error in ensemble prediction: {str(e)}"],
+            ml_prediction={"error": str(e)}
+        )
 
 @api_router.post("/tweet-input")
 async def add_tweet_input(tweet_input: TweetInput):
