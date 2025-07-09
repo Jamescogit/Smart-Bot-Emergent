@@ -2,16 +2,665 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
-        "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
-        "Helvetica Neue", sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
 }
 
-code {
-    font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
-        monospace;
+::-webkit-scrollbar-track {
+  background: #374151;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #6B7280;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
+
+/* Custom animations */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(59, 130, 246, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.8);
+  }
+}
+
+.trading-active {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Chart tooltips */
+.recharts-tooltip-wrapper {
+  background: rgba(31, 41, 55, 0.95) !important;
+  border: 1px solid #374151 !important;
+  border-radius: 6px !important;
+  backdrop-filter: blur(8px);
+}
+
+/* Status indicators */
+.status-green {
+  @apply bg-green-100 text-green-800;
+}
+
+.status-red {
+  @apply bg-red-100 text-red-800;
+}
+
+.status-yellow {
+  @apply bg-yellow-100 text-yellow-800;
+}
+
+/* Button hover effects */
+.btn-primary {
+  @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition-colors duration-200;
+}
+
+.btn-secondary {
+  @apply bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded transition-colors duration-200;
+}
+
+.btn-success {
+  @apply bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded transition-colors duration-200;
+}
+
+.btn-danger {
+  @apply bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded transition-colors duration-200;
+}
+
+/* Card hover effects */
+.card-hover {
+  @apply transition-transform duration-200 hover:scale-105;
+}
+
+/* Trading signal indicators */
+.signal-buy {
+  @apply text-green-500 font-bold;
+}
+
+.signal-sell {
+  @apply text-red-500 font-bold;
+}
+
+.signal-hold {
+  @apply text-gray-500 font-bold;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .symbol-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Loading states */
+.loading-spinner {
+  @apply animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500;
+}
+
+/* Performance metrics styling */
+.metric-positive {
+  @apply text-green-400 font-semibold;
+}
+
+.metric-negative {
+  @apply text-red-400 font-semibold;
+}
+
+.metric-neutral {
+  @apply text-gray-400 font-semibold;
+}
+
+/* Trading table styling */
+.trading-table {
+  @apply min-w-full divide-y divide-gray-700;
+}
+
+.trading-table thead {
+  @apply bg-gray-800;
+}
+
+.trading-table th {
+  @apply px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider;
+}
+
+.trading-table td {
+  @apply px-6 py-4 whitespace-nowrap text-sm;
+}
+
+.trading-table tbody tr:hover {
+  @apply bg-gray-750;
+}
+
+/* Real-time update indicators */
+.data-fresh {
+  @apply border-l-4 border-green-500;
+}
+
+.data-stale {
+  @apply border-l-4 border-yellow-500;
+}
+
+.data-error {
+  @apply border-l-4 border-red-500;
+}
+
+/* Custom progress bars */
+.progress-bar {
+  @apply w-full bg-gray-700 rounded-full h-2;
+}
+
+.progress-fill {
+  @apply h-2 bg-blue-600 rounded-full transition-all duration-300;
+}
+
+/* Alert styling */
+.alert-success {
+  @apply bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded;
+}
+
+.alert-error {
+  @apply bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded;
+}
+
+.alert-warning {
+  @apply bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded;
+}
+
+/* Dashboard specific styling */
+.dashboard-card {
+  @apply bg-gray-800 rounded-lg border border-gray-700 shadow-lg;
+}
+
+.dashboard-card-header {
+  @apply px-6 py-4 border-b border-gray-700;
+}
+
+.dashboard-card-body {
+  @apply px-6 py-4;
+}
+
+/* Symbol selector styling */
+.symbol-active {
+  @apply border-blue-500 bg-blue-900 bg-opacity-30;
+}
+
+.symbol-inactive {
+  @apply border-gray-700 hover:border-gray-600;
+}
+
+/* Model status indicators */
+.model-active {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800;
+}
+
+.model-inactive {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800;
+}
+
+/* Sentiment indicators */
+.sentiment-bullish {
+  @apply text-green-500 font-bold;
+}
+
+.sentiment-bearish {
+  @apply text-red-500 font-bold;
+}
+
+.sentiment-neutral {
+  @apply text-gray-500 font-bold;
+}
+
+/* Price change indicators */
+.price-up {
+  @apply text-green-400;
+}
+
+.price-down {
+  @apply text-red-400;
+}
+
+.price-unchanged {
+  @apply text-gray-400;
+}
+
+/* Technical indicator styling */
+.indicator-oversold {
+  @apply text-green-400 font-bold;
+}
+
+.indicator-overbought {
+  @apply text-red-400 font-bold;
+}
+
+.indicator-neutral {
+  @apply text-gray-400;
+}
+
+/* Backtesting results */
+.backtest-positive {
+  @apply text-green-400 font-semibold;
+}
+
+.backtest-negative {
+  @apply text-red-400 font-semibold;
+}
+
+/* Risk management styling */
+.risk-low {
+  @apply bg-green-100 text-green-800;
+}
+
+.risk-medium {
+  @apply bg-yellow-100 text-yellow-800;
+}
+
+.risk-high {
+  @apply bg-red-100 text-red-800;
+}
+
+/* Form styling */
+.form-input {
+  @apply w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+}
+
+.form-label {
+  @apply block text-sm font-medium text-gray-300 mb-1;
+}
+
+/* Toggle switches */
+.toggle-switch {
+  @apply relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+}
+
+.toggle-switch-active {
+  @apply bg-blue-600;
+}
+
+.toggle-switch-inactive {
+  @apply bg-gray-600;
+}
+
+/* Dropdown styling */
+.dropdown-menu {
+  @apply absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg z-50 border border-gray-700;
+}
+
+.dropdown-item {
+  @apply block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white;
+}
+
+/* Trading status indicators */
+.trading-live {
+  @apply bg-green-600 text-white;
+}
+
+.trading-paper {
+  @apply bg-blue-600 text-white;
+}
+
+.trading-stopped {
+  @apply bg-red-600 text-white;
+}
+
+/* Performance chart styling */
+.chart-container {
+  @apply bg-gray-800 rounded-lg p-4;
+}
+
+.chart-title {
+  @apply text-lg font-semibold text-white mb-4;
+}
+
+/* Responsive grid adjustments */
+@media (max-width: 1024px) {
+  .lg\:grid-cols-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .md\:grid-cols-2 {
+    grid-template-columns: 1fr;
+  }
+  
+  .lg\:grid-cols-5 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Dark mode enhancements */
+body {
+  @apply bg-gray-900 text-white;
+}
+
+/* Accessibility improvements */
+button:focus {
+  @apply outline-none ring-2 ring-blue-500 ring-offset-2 ring-offset-gray-800;
+}
+
+input:focus, textarea:focus, select:focus {
+  @apply outline-none ring-2 ring-blue-500 ring-offset-2 ring-offset-gray-800;
+}
+
+/* Animation for real-time updates */
+@keyframes flash-update {
+  0% { background-color: rgba(59, 130, 246, 0.2); }
+  50% { background-color: rgba(59, 130, 246, 0.4); }
+  100% { background-color: transparent; }
+}
+
+.flash-update {
+  animation: flash-update 0.5s ease-in-out;
+}
+
+/* Trading signal strength indicators */
+.signal-strength-weak {
+  @apply bg-gray-600;
+}
+
+.signal-strength-medium {
+  @apply bg-yellow-600;
+}
+
+.signal-strength-strong {
+  @apply bg-green-600;
+}
+
+/* Market status indicators */
+.market-open {
+  @apply bg-green-500 text-white;
+}
+
+.market-closed {
+  @apply bg-red-500 text-white;
+}
+
+.market-premarket {
+  @apply bg-yellow-500 text-white;
+}
+
+/* Custom utility classes */
+.text-profit {
+  @apply text-green-400 font-semibold;
+}
+
+.text-loss {
+  @apply text-red-400 font-semibold;
+}
+
+.text-breakeven {
+  @apply text-gray-400 font-semibold;
+}
+
+.border-profit {
+  @apply border-green-500;
+}
+
+.border-loss {
+  @apply border-red-500;
+}
+
+.border-breakeven {
+  @apply border-gray-500;
+}
+
+/* Glassmorphism effect for overlays */
+.glass-effect {
+  @apply bg-gray-800 bg-opacity-80 backdrop-blur-sm border border-gray-700;
+}
+
+/* Trading pair styling */
+.trading-pair {
+  @apply inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800;
+}
+
+/* Position size indicators */
+.position-small {
+  @apply bg-green-100 text-green-800;
+}
+
+.position-medium {
+  @apply bg-yellow-100 text-yellow-800;
+}
+
+.position-large {
+  @apply bg-red-100 text-red-800;
+}
+
+/* ML model confidence indicators */
+.confidence-high {
+  @apply text-green-400;
+}
+
+.confidence-medium {
+  @apply text-yellow-400;
+}
+
+.confidence-low {
+  @apply text-red-400;
+}
+
+/* Correlation matrix styling */
+.correlation-positive {
+  @apply bg-green-200 text-green-800;
+}
+
+.correlation-negative {
+  @apply bg-red-200 text-red-800;
+}
+
+.correlation-neutral {
+  @apply bg-gray-200 text-gray-800;
+}
+
+/* News sentiment styling */
+.news-positive {
+  @apply border-l-4 border-green-500 pl-4;
+}
+
+.news-negative {
+  @apply border-l-4 border-red-500 pl-4;
+}
+
+.news-neutral {
+  @apply border-l-4 border-gray-500 pl-4;
+}
+
+/* Economic calendar styling */
+.event-high-impact {
+  @apply bg-red-100 text-red-800;
+}
+
+.event-medium-impact {
+  @apply bg-yellow-100 text-yellow-800;
+}
+
+.event-low-impact {
+  @apply bg-green-100 text-green-800;
+}
+
+/* Tooltips */
+.tooltip {
+  @apply invisible absolute z-10 bg-gray-800 text-white text-sm rounded py-2 px-3 opacity-0 transition-opacity duration-300;
+}
+
+.tooltip-visible {
+  @apply visible opacity-100;
+}
+
+/* Custom scrollbar for tables */
+.table-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #6B7280 #374151;
+}
+
+.table-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.table-scroll::-webkit-scrollbar-track {
+  background: #374151;
+}
+
+.table-scroll::-webkit-scrollbar-thumb {
+  background: #6B7280;
+  border-radius: 4px;
+}
+
+/* Mobile-specific adjustments */
+@media (max-width: 640px) {
+  .mobile-stack {
+    flex-direction: column;
+  }
+  
+  .mobile-full-width {
+    width: 100%;
+  }
+  
+  .mobile-text-sm {
+    font-size: 0.875rem;
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-full-width {
+    width: 100% !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .dashboard-card {
+    @apply border-2 border-white;
+  }
+  
+  .btn-primary {
+    @apply border-2 border-blue-300;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus indicators for keyboard navigation */
+.focus-visible {
+  @apply outline-none ring-2 ring-blue-500 ring-offset-2 ring-offset-gray-800;
+}
+
+/* Loading skeleton */
+.skeleton {
+  @apply animate-pulse bg-gray-700 rounded;
+}
+
+.skeleton-text {
+  @apply h-4 bg-gray-700 rounded;
+}
+
+.skeleton-circle {
+  @apply rounded-full bg-gray-700;
+}
+
+/* Error states */
+.error-state {
+  @apply border-2 border-red-500 bg-red-50 text-red-700;
+}
+
+/* Success states */
+.success-state {
+  @apply border-2 border-green-500 bg-green-50 text-green-700;
+}
+
+/* Warning states */
+.warning-state {
+  @apply border-2 border-yellow-500 bg-yellow-50 text-yellow-700;
+}
+
+/* Data visualization enhancements */
+.chart-positive {
+  @apply text-green-400 fill-green-400;
+}
+
+.chart-negative {
+  @apply text-red-400 fill-red-400;
+}
+
+.chart-neutral {
+  @apply text-gray-400 fill-gray-400;
+}
+
+/* Badge styling */
+.badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+.badge-success {
+  @apply bg-green-100 text-green-800;
+}
+
+.badge-danger {
+  @apply bg-red-100 text-red-800;
+}
+
+.badge-warning {
+  @apply bg-yellow-100 text-yellow-800;
+}
+
+.badge-info {
+  @apply bg-blue-100 text-blue-800;
+}
+
+.badge-secondary {
+  @apply bg-gray-100 text-gray-800;
+}
+
+/* Time-based styling */
+.time-recent {
+  @apply text-green-400;
+}
+
+.time-old {
+  @apply text-gray-400;
+}
+
+.time-stale {
+  @apply text-red-400;
+}
+
+/* Final responsive adjustments */
+@media (max-width: 480px) {
+  .text-2xl {
+    @apply text-xl;
+  }
+  
+  .text-xl {
+    @apply text-lg;
+  }
+  
+  .p-6 {
+    @apply p-4;
+  }
+  
+  .gap-6 {
+    @apply gap-4;
+  }
 }
