@@ -1900,6 +1900,50 @@ async def create_sample_enhanced_trades():
         "trades_created": len(sample_trades)
     }
 
+@api_router.get("/performance-metrics")
+async def get_performance_metrics():
+    """Get comprehensive performance metrics"""
+    try:
+        # Get trading history
+        trades = await db.trades.find().to_list(1000)
+        
+        # Calculate metrics
+        total_trades = len(trades)
+        winning_trades = len([t for t in trades if t.get('profit', 0) > 0])
+        losing_trades = len([t for t in trades if t.get('profit', 0) < 0])
+        
+        win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
+        total_profit = sum(t.get('profit', 0) for t in trades)
+        total_pips = sum(t.get('pips', 0) for t in trades)
+        
+        # Calculate bot confidence (based on recent trading performance)
+        recent_trades = sorted(trades, key=lambda x: x.get('timestamp', ''), reverse=True)[:20]
+        if recent_trades:
+            recent_win_rate = len([t for t in recent_trades if t.get('profit', 0) > 0]) / len(recent_trades) * 100
+            # Bot confidence is based on recent performance and win rate
+            bot_confidence = min(90, max(10, recent_win_rate * 0.8 + 20))  # Scale 10-90%
+        else:
+            bot_confidence = 50  # Default confidence
+        
+        return {
+            "totalTrades": total_trades,
+            "winRate": round(win_rate, 1),
+            "totalProfit": round(total_profit, 2),
+            "totalPips": round(total_pips, 1),
+            "totalLosses": losing_trades,
+            "botConfidence": round(bot_confidence, 1)
+        }
+    except Exception as e:
+        # Return default values if error
+        return {
+            "totalTrades": 0,
+            "winRate": 0,
+            "totalProfit": 0,
+            "totalPips": 0,
+            "totalLosses": 0,
+            "botConfidence": 50
+        }
+
 @api_router.get("/trading-history")
 async def get_trading_history():
     """Get trading history"""
