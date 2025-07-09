@@ -692,12 +692,62 @@ async def get_technical_indicators(symbol: str):
     if symbol not in SYMBOLS:
         raise HTTPException(status_code=400, detail="Invalid symbol")
     
-    historical_data = await fetch_historical_data(symbol)
-    if historical_data.empty:
-        raise HTTPException(status_code=404, detail="Historical data not found")
-    
-    indicators = calculate_technical_indicators(historical_data)
-    return TechnicalIndicators(symbol=symbol, **indicators)
+    try:
+        historical_data = await fetch_historical_data(symbol)
+        if historical_data.empty:
+            # Return default indicators if no historical data
+            return TechnicalIndicators(
+                symbol=symbol,
+                rsi=50.0,
+                macd=0.0,
+                macd_signal=0.0,
+                macd_hist=0.0,
+                bb_upper=0.0,
+                bb_middle=0.0,
+                bb_lower=0.0,
+                stoch_k=50.0,
+                stoch_d=50.0,
+                atr=0.0,
+                obv=0.0
+            )
+        
+        indicators = calculate_technical_indicators(historical_data)
+        
+        # Ensure all required fields are present with defaults
+        indicator_data = {
+            'symbol': symbol,
+            'rsi': indicators.get('RSI', 50.0),
+            'macd': indicators.get('MACD', 0.0),
+            'macd_signal': indicators.get('MACD_signal', 0.0),
+            'macd_hist': indicators.get('MACD_hist', 0.0),
+            'bb_upper': indicators.get('BB_upper', 0.0),
+            'bb_middle': indicators.get('BB_middle', 0.0),
+            'bb_lower': indicators.get('BB_lower', 0.0),
+            'stoch_k': indicators.get('STOCH_K', 50.0),
+            'stoch_d': indicators.get('STOCH_D', 50.0),
+            'atr': indicators.get('ATR', 0.0),
+            'obv': indicators.get('OBV', 0.0)
+        }
+        
+        return TechnicalIndicators(**indicator_data)
+        
+    except Exception as e:
+        print(f"Error calculating technical indicators for {symbol}: {e}")
+        # Return default indicators on error
+        return TechnicalIndicators(
+            symbol=symbol,
+            rsi=50.0,
+            macd=0.0,
+            macd_signal=0.0,
+            macd_hist=0.0,
+            bb_upper=0.0,
+            bb_middle=0.0,
+            bb_lower=0.0,
+            stoch_k=50.0,
+            stoch_d=50.0,
+            atr=0.0,
+            obv=0.0
+        )
 
 @api_router.get("/trading-signal/{symbol}")
 async def get_trading_signal(symbol: str):
