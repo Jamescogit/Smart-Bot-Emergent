@@ -220,10 +220,15 @@ class ScalpingRLAgent:
         self.epsilon_min = 0.01
         self.memory = deque(maxlen=2000)
         
-        # Scalping-specific parameters
-        self.pip_target = 10  # Target 10 pips per trade
-        self.pip_stop_loss = 5  # Stop loss at 5 pips
-        self.max_hold_time = 5  # Max 5 minutes per trade
+        # Scalping-specific parameters (optimized for fast trades)
+        self.pip_target = 5  # Target 5 pips per trade (tighter for scalping)
+        self.pip_stop_loss = 3  # Stop loss at 3 pips (tighter risk management)
+        self.max_hold_time = 3  # Max 3 minutes per trade (faster scalping)
+        
+        # Faster learning parameters for scalping
+        self.gamma = 0.98  # Higher gamma for faster reward recognition
+        self.epsilon_decay = 0.99  # Faster exploration decay
+        self.epsilon_min = 0.05  # Slightly higher minimum for scalping volatility
         
         # Neural network weights optimized for scalping
         self.W1 = np.random.randn(state_size, 32) * 0.1
