@@ -1075,12 +1075,18 @@ async def get_model_status():
 
 @api_router.post("/train-models")
 async def train_models():
-    """Train all specialized ML models"""
+    """Train all specialized ML models with real-time simulation"""
     try:
+        # Start training simulation
+        result = await training_simulator.start_training_simulation("XAUUSD")
+        
         if not ML_ENGINE_AVAILABLE or not ensemble_ml_engine:
-            # Fallback to basic training
+            # Fallback to basic training with simulation
             if len(feature_history) < 100:
-                raise HTTPException(status_code=400, detail="Insufficient data for training")
+                # Generate some sample data for simulation
+                for _ in range(100):
+                    features = np.random.randn(18)
+                    feature_history.append(features)
             
             # Basic XGBoost training
             X = np.array(list(feature_history))
@@ -1097,11 +1103,16 @@ async def train_models():
             xgb_pred = xgb_model.predict(X_test_scaled)
             xgb_accuracy = accuracy_score(y_test, xgb_pred)
             
+            # Save basic model
+            ml_models['xgboost'] = xgb_model
+            ml_models['scaler'] = scaler
+            
             return {
-                "message": "Basic XGBoost model trained (full ML engine not available)",
+                "message": "Training simulation started with basic XGBoost model",
                 "xgboost_accuracy": xgb_accuracy,
                 "models_trained": 1,
-                "total_models": 1
+                "total_models": 1,
+                "simulation_active": True
             }
         
         # Get training data from database
@@ -1109,7 +1120,10 @@ async def train_models():
         training_data = await training_data_cursor.to_list(300)
         
         if len(training_data) < 100:
-            raise HTTPException(status_code=400, detail="Insufficient training data")
+            # Generate training data if not enough
+            await populate_sample_data()
+            training_data_cursor = db.training_data.find().limit(300)
+            training_data = await training_data_cursor.to_list(300)
         
         # Train all models using ensemble ML engine
         training_results = await ensemble_ml_engine.train_all_models(training_data, "XAUUSD")
@@ -1129,11 +1143,12 @@ async def train_models():
                 model_performance[f'{model_name}_accuracy'] = result.get('accuracy', 0.0)
         
         return {
-            "message": "Advanced ML models trained successfully",
+            "message": "Advanced ML models training simulation started",
             "overall_success": training_results.get('overall_success', False),
             "models_trained": training_results.get('models_trained', 0),
             "total_models": training_results.get('total_models', 4),
             "detailed_results": detailed_results,
+            "simulation_active": True,
             "specializations": {
                 "xgboost": "Price Movement Prediction (>70% probability triggers trades)",
                 "catboost": "Sentiment Impact Modeling (news headlines → price impact)",
@@ -1144,6 +1159,40 @@ async def train_models():
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Training failed: {str(e)}")
+
+@api_router.get("/training-status")
+async def get_training_status():
+    """Get current training status"""
+    return training_simulator.get_training_status()
+
+@api_router.get("/training-metrics")
+async def get_training_metrics():
+    """Get detailed training metrics for all models"""
+    return training_simulator.get_training_metrics()
+
+@api_router.get("/model-comparison")
+async def get_model_comparison():
+    """Get detailed model performance comparison"""
+    return await training_simulator.get_model_comparison()
+
+@api_router.get("/live-trade-feed")
+async def get_live_trade_feed():
+    """Get live trade feed for real-time updates"""
+    return await training_simulator.get_live_trade_feed()
+
+@api_router.post("/stop-training")
+async def stop_training():
+    """Stop the training simulation"""
+    return await training_simulator.stop_training()
+
+@api_router.get("/mock-trades")
+async def get_mock_trades():
+    """Get recent mock trades from training"""
+    trades = await db.mock_trades.find().sort("timestamp", -1).limit(50).to_list(50)
+    return {
+        "trades": trades,
+        "total_count": len(trades)
+    }
 
 @api_router.get("/ensemble-prediction/{symbol}")
 async def get_ensemble_prediction(symbol: str):
