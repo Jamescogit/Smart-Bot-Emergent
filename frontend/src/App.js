@@ -346,6 +346,7 @@ function App() {
         fetchTechnicalIndicators(selectedSymbol);
         fetchTradingSignals(selectedSymbol);
         fetchTradingHistory();
+        fetchPerformanceMetrics();
         fetchModelStatus();
         
         // Fetch candlestick data for scalping
