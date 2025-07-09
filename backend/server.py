@@ -2396,6 +2396,13 @@ async def create_sample_enhanced_trades():
     if sample_trades:
         await db.enhanced_trades.insert_many(sample_trades)
     
+    # Save trade data after creating sample trades
+    try:
+        save_all_persistent_data()
+        print("💾 Saved trading data after creating sample trades")
+    except Exception as e:
+        print(f"❌ Error saving sample trades: {e}")
+    
     return {
         "message": f"Created {len(sample_trades)} sample enhanced trades",
         "trades_created": len(sample_trades)
