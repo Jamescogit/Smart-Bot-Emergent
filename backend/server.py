@@ -171,6 +171,224 @@ class ScalpingSignal(BaseModel):
     timeframe: str  # 1m, 5m for scalping
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
+# Scalping-focused Reinforcement Learning Agent
+class ScalpingRLAgent:
+    def __init__(self, state_size=15, action_size=3, learning_rate=0.001):
+        self.state_size = state_size
+        self.action_size = action_size  # 0: HOLD, 1: BUY, 2: SELL
+        self.lr = learning_rate
+        self.gamma = 0.95
+        self.epsilon = 1.0
+        self.epsilon_decay = 0.995
+        self.epsilon_min = 0.01
+        self.memory = deque(maxlen=2000)
+        
+        # Scalping-specific parameters
+        self.pip_target = 10  # Target 10 pips per trade
+        self.pip_stop_loss = 5  # Stop loss at 5 pips
+        self.max_hold_time = 5  # Max 5 minutes per trade
+        
+        # Neural network weights optimized for scalping
+        self.W1 = np.random.randn(state_size, 32) * 0.1
+        self.b1 = np.zeros((1, 32))
+        self.W2 = np.random.randn(32, 16) * 0.1
+        self.b2 = np.zeros((1, 16))
+        self.W3 = np.random.randn(16, action_size) * 0.1
+        self.b3 = np.zeros((1, action_size))
+        
+        # Performance tracking
+        self.trades_made = 0
+        self.winning_trades = 0
+        self.total_pips = 0
+        self.current_streak = 0
+        
+    def prepare_scalping_state(self, candlestick_data):
+        """Prepare state vector optimized for scalping"""
+        if len(candlestick_data) < 10:
+            return np.zeros(self.state_size)
+        
+        recent_candles = candlestick_data[-10:]  # Last 10 minutes
+        
+        # Extract features for scalping
+        closes = [candle['close'] for candle in recent_candles]
+        highs = [candle['high'] for candle in recent_candles]
+        lows = [candle['low'] for candle in recent_candles]
+        volumes = [candle['volume'] for candle in recent_candles]
+        
+        # Calculate scalping-specific features
+        current_price = closes[-1]
+        
+        # 1. Short-term momentum (1, 2, 3 minute)
+        momentum_1m = (closes[-1] - closes[-2]) / closes[-2] if len(closes) >= 2 else 0
+        momentum_2m = (closes[-1] - closes[-3]) / closes[-3] if len(closes) >= 3 else 0
+        momentum_3m = (closes[-1] - closes[-4]) / closes[-4] if len(closes) >= 4 else 0
+        
+        # 2. Volatility measures
+        price_range = (max(highs) - min(lows)) / current_price
+        volume_spike = volumes[-1] / np.mean(volumes[:-1]) if len(volumes) > 1 else 1
+        
+        # 3. Support/Resistance levels
+        recent_high = max(highs)
+        recent_low = min(lows)
+        distance_to_high = (recent_high - current_price) / current_price
+        distance_to_low = (current_price - recent_low) / current_price
+        
+        # 4. Price action patterns
+        green_candles = sum(1 for candle in recent_candles if candle['close'] > candle['open'])
+        red_candles = len(recent_candles) - green_candles
+        
+        # 5. Trend indicators
+        sma_3 = np.mean(closes[-3:])
+        sma_5 = np.mean(closes[-5:])
+        price_vs_sma3 = (current_price - sma_3) / sma_3
+        price_vs_sma5 = (current_price - sma_5) / sma_5
+        
+        # Combine features into state vector
+        state = np.array([
+            momentum_1m * 1000,  # Scale up small forex movements
+            momentum_2m * 1000,
+            momentum_3m * 1000,
+            price_range * 1000,
+            volume_spike,
+            distance_to_high * 1000,
+            distance_to_low * 1000,
+            green_candles / len(recent_candles),
+            red_candles / len(recent_candles),
+            price_vs_sma3 * 1000,
+            price_vs_sma5 * 1000,
+            np.tanh(current_price / 1000),  # Normalized price
+            self.epsilon,  # Exploration factor
+            self.trades_made / 100,  # Normalized trade count
+            self.total_pips / 1000  # Normalized total pips
+        ])
+        
+        return state
+    
+    def forward(self, state):
+        z1 = np.dot(state, self.W1) + self.b1
+        a1 = np.maximum(0, z1)  # ReLU
+        z2 = np.dot(a1, self.W2) + self.b2
+        a2 = np.maximum(0, z2)  # ReLU
+        z3 = np.dot(a2, self.W3) + self.b3
+        return z3
+    
+    def act(self, state, use_ml_confidence=None):
+        if use_ml_confidence and np.random.random() <= use_ml_confidence:
+            return np.argmax(self.forward(state.reshape(1, -1)))
+        
+        if np.random.random() <= self.epsilon:
+            return np.random.choice(self.action_size)
+        
+        q_values = self.forward(state.reshape(1, -1))
+        return np.argmax(q_values)
+    
+    def calculate_scalping_reward(self, action, entry_price, exit_price, symbol):
+        """Calculate reward optimized for scalping"""
+        pip_values = {
+            'XAUUSD': 0.1,
+            'EURUSD': 0.0001,
+            'EURJPY': 0.01,
+            'USDJPY': 0.01,
+            'NASDAQ': 1.0
+        }
+        
+        pip_value = pip_values.get(symbol, 0.01)
+        
+        if action == 0:  # HOLD
+            return 0
+        elif action == 1:  # BUY
+            pips = (exit_price - entry_price) / pip_value
+        else:  # SELL
+            pips = (entry_price - exit_price) / pip_value
+        
+        # Update performance tracking
+        self.trades_made += 1
+        self.total_pips += pips
+        
+        if pips > 0:
+            self.winning_trades += 1
+            self.current_streak = max(0, self.current_streak + 1)
+        else:
+            self.current_streak = min(0, self.current_streak - 1)
+        
+        # Reward function optimized for scalping
+        if pips >= self.pip_target:
+            reward = 1.0 + (pips - self.pip_target) * 0.1  # Bonus for exceeding target
+        elif pips > 0:
+            reward = pips / self.pip_target  # Partial reward for positive pips
+        elif pips >= -self.pip_stop_loss:
+            reward = pips / self.pip_stop_loss  # Moderate penalty for small losses
+        else:
+            reward = -2.0  # Heavy penalty for exceeding stop loss
+        
+        return reward
+    
+    def remember(self, state, action, reward, next_state, done):
+        self.memory.append((state, action, reward, next_state, done))
+    
+    def replay(self, batch_size=32):
+        if len(self.memory) < batch_size:
+            return
+        
+        batch = np.random.choice(len(self.memory), batch_size, replace=False)
+        
+        for idx in batch:
+            state, action, reward, next_state, done = self.memory[idx]
+            target = reward
+            
+            if not done:
+                target = reward + self.gamma * np.max(self.forward(next_state.reshape(1, -1)))
+            
+            target_f = self.forward(state.reshape(1, -1))
+            target_f[0][action] = target
+            
+            self._train_step(state.reshape(1, -1), target_f)
+        
+        if self.epsilon > self.epsilon_min:
+            self.epsilon *= self.epsilon_decay
+    
+    def _train_step(self, X, y):
+        # Forward pass
+        z1 = np.dot(X, self.W1) + self.b1
+        a1 = np.maximum(0, z1)
+        z2 = np.dot(a1, self.W2) + self.b2
+        a2 = np.maximum(0, z2)
+        z3 = np.dot(a2, self.W3) + self.b3
+        
+        # Backward pass
+        dz3 = (z3 - y) / X.shape[0]
+        dW3 = np.dot(a2.T, dz3)
+        db3 = np.sum(dz3, axis=0, keepdims=True)
+        
+        da2 = np.dot(dz3, self.W3.T)
+        dz2 = da2 * (z2 > 0)
+        dW2 = np.dot(a1.T, dz2)
+        db2 = np.sum(dz2, axis=0, keepdims=True)
+        
+        da1 = np.dot(dz2, self.W2.T)
+        dz1 = da1 * (z1 > 0)
+        dW1 = np.dot(X.T, dz1)
+        db1 = np.sum(dz1, axis=0, keepdims=True)
+        
+        # Update weights
+        self.W3 -= self.lr * dW3
+        self.b3 -= self.lr * db3
+        self.W2 -= self.lr * dW2
+        self.b2 -= self.lr * db2
+        self.W1 -= self.lr * dW1
+        self.b1 -= self.lr * db1
+    
+    def get_performance_metrics(self):
+        win_rate = (self.winning_trades / self.trades_made * 100) if self.trades_made > 0 else 0
+        return {
+            'trades_made': self.trades_made,
+            'winning_trades': self.winning_trades,
+            'win_rate': win_rate,
+            'total_pips': self.total_pips,
+            'current_streak': self.current_streak,
+            'epsilon': self.epsilon
+        }
+
 # Reinforcement Learning Agent
 class RLTradingAgent:
     def __init__(self, state_size=20, action_size=3, learning_rate=0.001):
