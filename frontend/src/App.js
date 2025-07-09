@@ -824,7 +824,11 @@ function App() {
                 </div>
               </div>
               <div className="p-4">
-                <ChartErrorBoundary>
+                <ChartErrorBoundary
+                  data={candlestickData[selectedSymbol] || []}
+                  symbol={selectedSymbol}
+                  height={350}
+                >
                   <CandlestickChart 
                     data={candlestickData[selectedSymbol] || []}
                     symbol={selectedSymbol}
