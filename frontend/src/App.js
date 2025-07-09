@@ -1153,6 +1153,8 @@ function App() {
       </div>
         ) : currentView === 'trade-history' ? (
           <EnhancedTradeHistory />
+        ) : currentView === 'scalping' ? (
+          <ScalpingDashboard />
         ) : null}
       </div>
     </div>
