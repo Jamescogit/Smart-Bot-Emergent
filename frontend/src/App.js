@@ -331,8 +331,7 @@ function App() {
         fetchPerformanceMetrics();
         fetchModelStatus();
         
-        // Fetch candlestick data for scalping
-        fetchCandlestickData(selectedSymbol);
+        // Fetch scalping data
         fetchScalpingSignals(selectedSymbol);
         fetchScalpingRLPerformance();
         
@@ -347,7 +346,7 @@ function App() {
       intervalRef.current = interval;
       return () => clearInterval(interval);
     }
-  }, [isAutoRefresh, selectedSymbol, trainingStatus.is_training, autoRefreshInterval, chartInterval]);
+  }, [isAutoRefresh, selectedSymbol, trainingStatus.is_training, autoRefreshInterval]);
 
   // Initial data fetch
   useEffect(() => {
