@@ -1256,13 +1256,22 @@ async def populate_sample_data():
         for i in range(50):
             symbol = np.random.choice(SYMBOLS)
             action = np.random.choice(['BUY', 'SELL'])
-            entry_price = np.random.uniform(100, 3000) if symbol == 'XAUUSD' else np.random.uniform(1, 200)
-            exit_price = entry_price * (1 + np.random.uniform(-0.05, 0.05))
+            entry_price = np.random.uniform(2600, 2700) if symbol == 'XAUUSD' else (
+                np.random.uniform(1.04, 1.06) if symbol == 'EURUSD' else (
+                    np.random.uniform(155, 158) if symbol == 'USDJPY' else (
+                        np.random.uniform(162, 166) if symbol == 'EURJPY' else 
+                        np.random.uniform(19500, 20500)  # NASDAQ
+                    )
+                )
+            )
+            exit_price = entry_price * (1 + np.random.uniform(-0.02, 0.02))
             quantity = np.random.uniform(0.1, 2.0)
-            profit = (exit_price - entry_price) * quantity if action == 'BUY' else (entry_price - exit_price) * quantity
-            pips = abs(exit_price - entry_price) * 10000 if 'USD' in symbol else abs(exit_price - entry_price) * 100
-            if profit < 0:
-                pips = -pips
+            
+            # Use correct pip calculation
+            pips = calculate_pips(entry_price, exit_price, symbol, action)
+            
+            # Calculate profit based on pips
+            profit = pips * quantity * 0.1  # Simplified profit calculation
             
             # Generate technical indicators for intelligent strategy labeling
             rsi_value = np.random.randint(20, 80)
