@@ -56,6 +56,208 @@ SYMBOLS = ['XAUUSD', 'EURUSD', 'EURJPY', 'USDJPY', 'NASDAQ']
 EODHD_API_KEY = os.environ.get('EODHD_API_KEY')
 NEWS_API_KEY = os.environ.get('NEWS_API_KEY')
 
+import os
+import pickle
+import json
+from pathlib import Path
+
+# Create data directory for persistence
+DATA_DIR = Path("/app/data")
+DATA_DIR.mkdir(exist_ok=True)
+
+# Persistence file paths
+RL_AGENT_FILE = DATA_DIR / "rl_agent.pkl"
+SCALPING_RL_AGENT_FILE = DATA_DIR / "scalping_rl_agent.pkl"
+ML_MODELS_FILE = DATA_DIR / "ml_models.pkl"
+FEATURE_HISTORY_FILE = DATA_DIR / "feature_history.pkl"
+PRICE_HISTORY_FILE = DATA_DIR / "price_history.pkl"
+TRADING_HISTORY_FILE = DATA_DIR / "trading_history.json"
+MODEL_PERFORMANCE_FILE = DATA_DIR / "model_performance.json"
+
+def save_rl_agents():
+    """Save RL agents to disk for persistence"""
+    try:
+        global rl_agent, scalping_rl_agent
+        
+        if rl_agent:
+            with open(RL_AGENT_FILE, 'wb') as f:
+                pickle.dump(rl_agent, f)
+            print(f"✅ Saved RL agent to {RL_AGENT_FILE}")
+        
+        if scalping_rl_agent:
+            with open(SCALPING_RL_AGENT_FILE, 'wb') as f:
+                pickle.dump(scalping_rl_agent, f)
+            print(f"✅ Saved Scalping RL agent to {SCALPING_RL_AGENT_FILE}")
+            
+    except Exception as e:
+        print(f"❌ Error saving RL agents: {e}")
+
+def load_rl_agents():
+    """Load RL agents from disk"""
+    try:
+        global rl_agent, scalping_rl_agent
+        
+        if RL_AGENT_FILE.exists():
+            with open(RL_AGENT_FILE, 'rb') as f:
+                rl_agent = pickle.load(f)
+            print(f"✅ Loaded RL agent from {RL_AGENT_FILE}")
+        
+        if SCALPING_RL_AGENT_FILE.exists():
+            with open(SCALPING_RL_AGENT_FILE, 'rb') as f:
+                scalping_rl_agent = pickle.load(f)
+            print(f"✅ Loaded Scalping RL agent from {SCALPING_RL_AGENT_FILE}")
+            print(f"   - Trades made: {scalping_rl_agent.trades_made}")
+            print(f"   - Memory size: {len(scalping_rl_agent.memory)}")
+            print(f"   - Epsilon: {scalping_rl_agent.epsilon:.3f}")
+            
+    except Exception as e:
+        print(f"❌ Error loading RL agents: {e}")
+
+def save_ml_models():
+    """Save ML models to disk"""
+    try:
+        global ml_models
+        
+        if ml_models:
+            with open(ML_MODELS_FILE, 'wb') as f:
+                pickle.dump(ml_models, f)
+            print(f"✅ Saved ML models to {ML_MODELS_FILE}")
+            
+    except Exception as e:
+        print(f"❌ Error saving ML models: {e}")
+
+def load_ml_models():
+    """Load ML models from disk"""
+    try:
+        global ml_models
+        
+        if ML_MODELS_FILE.exists():
+            with open(ML_MODELS_FILE, 'rb') as f:
+                ml_models = pickle.load(f)
+            print(f"✅ Loaded ML models from {ML_MODELS_FILE}")
+            
+            # Print status of loaded models
+            for model_name, model in ml_models.items():
+                status = "Active" if model is not None else "Inactive"
+                print(f"   - {model_name}: {status}")
+                
+    except Exception as e:
+        print(f"❌ Error loading ML models: {e}")
+
+def save_feature_and_price_history():
+    """Save feature history and price history"""
+    try:
+        global feature_history, price_history
+        
+        if feature_history:
+            with open(FEATURE_HISTORY_FILE, 'wb') as f:
+                pickle.dump(list(feature_history), f)
+            print(f"✅ Saved feature history ({len(feature_history)} records) to {FEATURE_HISTORY_FILE}")
+        
+        if price_history:
+            # Convert deque to regular dict for JSON serialization
+            price_history_dict = {symbol: list(prices) for symbol, prices in price_history.items()}
+            with open(PRICE_HISTORY_FILE, 'wb') as f:
+                pickle.dump(price_history_dict, f)
+            print(f"✅ Saved price history to {PRICE_HISTORY_FILE}")
+            
+    except Exception as e:
+        print(f"❌ Error saving feature/price history: {e}")
+
+def load_feature_and_price_history():
+    """Load feature history and price history"""
+    try:
+        global feature_history, price_history
+        
+        if FEATURE_HISTORY_FILE.exists():
+            with open(FEATURE_HISTORY_FILE, 'rb') as f:
+                feature_list = pickle.load(f)
+                feature_history = deque(feature_list, maxlen=1000)
+            print(f"✅ Loaded feature history ({len(feature_history)} records) from {FEATURE_HISTORY_FILE}")
+        
+        if PRICE_HISTORY_FILE.exists():
+            with open(PRICE_HISTORY_FILE, 'rb') as f:
+                price_history_dict = pickle.load(f)
+                # Convert back to deque
+                price_history = {symbol: deque(prices, maxlen=100) for symbol, prices in price_history_dict.items()}
+            print(f"✅ Loaded price history from {PRICE_HISTORY_FILE}")
+            
+    except Exception as e:
+        print(f"❌ Error loading feature/price history: {e}")
+
+def save_trading_data():
+    """Save trading history and model performance"""
+    try:
+        global trading_history, model_performance
+        
+        # Save trading history as JSON
+        if trading_history:
+            trading_data = []
+            for trade in trading_history:
+                # Convert to JSON-serializable format
+                if hasattr(trade, '__dict__'):
+                    trade_dict = trade.__dict__
+                else:
+                    trade_dict = trade
+                
+                # Handle datetime objects
+                if 'timestamp' in trade_dict and hasattr(trade_dict['timestamp'], 'isoformat'):
+                    trade_dict['timestamp'] = trade_dict['timestamp'].isoformat()
+                if 'close_timestamp' in trade_dict and trade_dict['close_timestamp'] and hasattr(trade_dict['close_timestamp'], 'isoformat'):
+                    trade_dict['close_timestamp'] = trade_dict['close_timestamp'].isoformat()
+                    
+                trading_data.append(trade_dict)
+            
+            with open(TRADING_HISTORY_FILE, 'w') as f:
+                json.dump(trading_data, f, indent=2)
+            print(f"✅ Saved trading history ({len(trading_data)} trades) to {TRADING_HISTORY_FILE}")
+        
+        # Save model performance
+        if model_performance:
+            with open(MODEL_PERFORMANCE_FILE, 'w') as f:
+                json.dump(model_performance, f, indent=2)
+            print(f"✅ Saved model performance to {MODEL_PERFORMANCE_FILE}")
+            
+    except Exception as e:
+        print(f"❌ Error saving trading data: {e}")
+
+def load_trading_data():
+    """Load trading history and model performance"""
+    try:
+        global trading_history, model_performance
+        
+        if TRADING_HISTORY_FILE.exists():
+            with open(TRADING_HISTORY_FILE, 'r') as f:
+                trading_data = json.load(f)
+                trading_history = trading_data
+            print(f"✅ Loaded trading history ({len(trading_history)} trades) from {TRADING_HISTORY_FILE}")
+        
+        if MODEL_PERFORMANCE_FILE.exists():
+            with open(MODEL_PERFORMANCE_FILE, 'r') as f:
+                model_performance = json.load(f)
+            print(f"✅ Loaded model performance from {MODEL_PERFORMANCE_FILE}")
+            
+    except Exception as e:
+        print(f"❌ Error loading trading data: {e}")
+
+def save_all_persistent_data():
+    """Save all persistent data in one call"""
+    print("💾 Saving all persistent data...")
+    save_rl_agents()
+    save_ml_models()
+    save_feature_and_price_history()
+    save_trading_data()
+    print("✅ All persistent data saved successfully!")
+
+def load_all_persistent_data():
+    """Load all persistent data in one call"""
+    print("📂 Loading all persistent data...")
+    load_rl_agents()
+    load_ml_models()
+    load_feature_and_price_history()
+    load_trading_data()
+    print("✅ All persistent data loaded successfully!")
+
 # Global variables for models and data
 ml_models = {}
 rl_agent = None
