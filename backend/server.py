@@ -1259,22 +1259,28 @@ async def populate_sample_data():
                     )
                 )
             )
-            exit_price = entry_price * (1 + np.random.uniform(-0.02, 0.02))
-            quantity = np.random.uniform(0.1, 2.0)
+            # Generate smaller price movements for scalping
+            exit_price = entry_price * (1 + np.random.uniform(-0.005, 0.005))  # Smaller moves for scalping
+            quantity = np.random.uniform(0.1, 1.0)  # Smaller quantities for scalping
             
             # Use correct pip calculation
             pips = calculate_pips(entry_price, exit_price, symbol, action)
             
-            # Calculate profit based on pips
-            profit = pips * quantity * 0.1  # Simplified profit calculation
+            # Calculate profit based on pips (more realistic for scalping)
+            if symbol == 'XAUUSD':
+                profit = pips * quantity * 0.1  # $0.10 per pip
+            elif symbol == 'EURUSD':
+                profit = pips * quantity * 1.0  # $1.00 per pip
+            else:
+                profit = pips * quantity * 0.1
             
-            # Generate technical indicators for intelligent strategy labeling
-            rsi_value = np.random.randint(20, 80)
-            macd_value = np.random.uniform(-0.002, 0.002)
-            macd_signal = macd_value + np.random.uniform(-0.0005, 0.0005)
-            atr_value = np.random.uniform(0.0005, 0.003)
-            volume_value = np.random.randint(10000, 150000)
-            news_sentiment = round(np.random.uniform(-0.5, 0.5), 2)
+            # Generate technical indicators optimized for scalping
+            rsi_value = np.random.randint(25, 75)  # More realistic RSI range
+            macd_value = np.random.uniform(-0.0005, 0.0005)  # Smaller MACD values for scalping
+            macd_signal = macd_value + np.random.uniform(-0.0001, 0.0001)  # Tighter signal
+            atr_value = np.random.uniform(0.0008, 0.0015)  # Realistic ATR for scalping
+            volume_value = np.random.randint(50000, 120000)  # Volume range for scalping
+            news_sentiment = round(np.random.uniform(-0.3, 0.3), 2)  # Moderate sentiment
             tweet_bias = np.random.choice(['BULLISH', 'BEARISH', 'NEUTRAL'])
             
             # Create technical indicators dict for strategy determination
