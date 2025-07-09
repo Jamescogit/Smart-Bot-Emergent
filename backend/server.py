@@ -601,6 +601,19 @@ class ScalpingRLAgent:
         
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
+            
+        # Save agent state after training (every 10 training sessions to avoid excessive I/O)
+        if hasattr(self, 'training_sessions'):
+            self.training_sessions += 1
+        else:
+            self.training_sessions = 1
+            
+        if self.training_sessions % 10 == 0:
+            try:
+                save_all_persistent_data()
+                print(f"💾 Saved learning progress after {self.training_sessions} training sessions")
+            except Exception as e:
+                print(f"❌ Error saving after training: {e}")
     
     def _train_step(self, X, y):
         # Forward pass
