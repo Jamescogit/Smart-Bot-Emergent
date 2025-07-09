@@ -643,9 +643,79 @@ async def populate_sample_data():
             if market_data:
                 await db.market_data.insert_one(market_data)
         
-        # Generate sample feature history for ML training
-        for _ in range(200):
-            features = np.random.randn(18)  # 18 features for ML model
+        # Generate comprehensive training data for ML models
+        training_data = []
+        for i in range(300):  # More data for better ML training
+            symbol = np.random.choice(SYMBOLS)
+            base_price = {
+                'XAUUSD': 2650.0,
+                'EURUSD': 1.0500,
+                'EURJPY': 164.0,
+                'USDJPY': 156.0,
+                'NASDAQ': 20000.0
+            }[symbol]
+            
+            # Generate realistic market data
+            price = base_price + np.random.uniform(-base_price*0.02, base_price*0.02)
+            volume = np.random.randint(100000, 1000000)
+            change = np.random.uniform(-2, 2)
+            
+            # Generate technical indicators
+            indicators = {
+                'RSI': np.random.uniform(30, 70),
+                'MACD': np.random.uniform(-0.5, 0.5),
+                'MACD_signal': np.random.uniform(-0.4, 0.4),
+                'MACD_hist': np.random.uniform(-0.2, 0.2),
+                'BB_upper': price * 1.02,
+                'BB_middle': price,
+                'BB_lower': price * 0.98,
+                'STOCH_K': np.random.uniform(20, 80),
+                'STOCH_D': np.random.uniform(20, 80),
+                'ATR': np.random.uniform(0.5, 2.0),
+                'EMA_12': price * 1.001,
+                'EMA_26': price * 0.999
+            }
+            
+            # Generate sentiment data
+            sentiment_data = {
+                'sentiment_score': np.random.uniform(-0.5, 0.5),
+                'article_count': np.random.randint(1, 20),
+                'confidence': np.random.uniform(0.3, 0.9),
+                'keywords': ['market', 'trading', 'price']
+            }
+            
+            # Generate next price change for training
+            next_price_change = np.random.uniform(-3, 3)
+            
+            training_point = {
+                'symbol': symbol,
+                'timestamp': datetime.now() - timedelta(hours=i),
+                'market_data': {
+                    'price': price,
+                    'volume': volume,
+                    'change': change
+                },
+                'indicators': indicators,
+                'sentiment_data': sentiment_data,
+                'news_sentiment': sentiment_data['sentiment_score'],
+                'event_flag': np.random.choice([0, 1], p=[0.8, 0.2]),
+                'next_price_change': next_price_change
+            }
+            
+            training_data.append(training_point)
+        
+        # Store training data in database
+        await db.training_data.insert_many(training_data)
+        print(f"Inserted {len(training_data)} training data points")
+        
+        # Initialize feature history for RL agent
+        for data_point in training_data:
+            features = prepare_ml_features(
+                data_point['market_data'], 
+                data_point['indicators'], 
+                data_point['news_sentiment'], 
+                data_point['event_flag']
+            )
             feature_history.append(features)
         
         print("Sample data population completed!")
