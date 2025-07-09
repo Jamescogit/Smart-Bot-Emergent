@@ -1137,6 +1137,8 @@ async def get_market_data(symbol: str):
     try:
         data = await fetch_live_data(symbol)
         if data:
+            # Update candlestick history for scalping analysis
+            await update_candlestick_history(symbol, data)
             return data
         else:
             # Generate fallback data if API fails
@@ -1156,6 +1158,8 @@ async def get_market_data(symbol: str):
                 'timestamp': datetime.now()
             }
             
+            # Update candlestick history with fallback data
+            await update_candlestick_history(symbol, fallback_data)
             return fallback_data
             
     except Exception as e:
@@ -1168,13 +1172,52 @@ async def get_market_data(symbol: str):
             'NASDAQ': 20000.0 + np.random.uniform(-500, 500)
         }
         
-        return {
+        fallback_data = {
             'symbol': symbol,
             'price': price_map.get(symbol, 100.0),
             'change': np.random.uniform(-1.5, 1.5),
             'volume': np.random.randint(100000, 1000000),
             'timestamp': datetime.now()
         }
+        
+        # Update candlestick history with fallback data
+        await update_candlestick_history(symbol, fallback_data)
+        return fallback_data
+
+async def update_candlestick_history(symbol: str, market_data: Dict):
+    """Update candlestick history for scalping analysis"""
+    global candlestick_history
+    
+    # Create a candlestick from current market data
+    # This is a simplified approach - in real implementation, you'd aggregate tick data
+    current_time = datetime.now()
+    
+    # For simplicity, we'll create 1-minute candles
+    minute_key = current_time.replace(second=0, microsecond=0)
+    
+    current_candle = {
+        'timestamp': minute_key.isoformat(),
+        'open': market_data['price'],
+        'high': market_data['price'],
+        'low': market_data['price'],
+        'close': market_data['price'],
+        'volume': market_data['volume']
+    }
+    
+    # Add to history
+    if symbol not in candlestick_history:
+        candlestick_history[symbol] = deque(maxlen=100)
+    
+    # Check if this is a new minute candle or update existing
+    if candlestick_history[symbol] and candlestick_history[symbol][-1]['timestamp'] == minute_key.isoformat():
+        # Update existing candle
+        candlestick_history[symbol][-1]['high'] = max(candlestick_history[symbol][-1]['high'], market_data['price'])
+        candlestick_history[symbol][-1]['low'] = min(candlestick_history[symbol][-1]['low'], market_data['price'])
+        candlestick_history[symbol][-1]['close'] = market_data['price']
+        candlestick_history[symbol][-1]['volume'] += market_data['volume']
+    else:
+        # New minute candle
+        candlestick_history[symbol].append(current_candle)
 
 @api_router.get("/candlestick-data/{symbol}")
 async def get_candlestick_data(symbol: str, period: str = '1d', interval: str = '1m'):
