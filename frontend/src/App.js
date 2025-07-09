@@ -1104,6 +1104,10 @@ function App() {
           </div>
         </div>
       </div>
+        ) : currentView === 'trade-history' ? (
+          <EnhancedTradeHistory />
+        ) : null}
+      </div>
     </div>
   );
 }
