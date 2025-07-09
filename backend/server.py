@@ -758,7 +758,7 @@ def generate_sample_candlestick_data(symbol: str, interval: str = '1m') -> List[
 
 def get_strategy_label(indicators, sentiment=0, tweet_bias="NEUTRAL", events=None, action="HOLD"):
     """
-    Determine strategy label based on actual trading conditions
+    Determine scalping strategy label based on fast timeframes and scalping conditions
     """
     if events is None:
         events = []
@@ -773,67 +773,57 @@ def get_strategy_label(indicators, sentiment=0, tweet_bias="NEUTRAL", events=Non
     price = indicators.get("price", 0)
     volume = indicators.get("volume", 0)
     
-    # RSI Reversal Strategy
+    # SCALPING-SPECIFIC STRATEGY LABELS
+    
+    # 1. Scalp Reversal (RSI oversold/overbought on 1-min)
     if rsi < 30 and action == "BUY":
-        return "RSI Reversal"
+        return "Scalp Reversal"
     elif rsi > 70 and action == "SELL":
-        return "RSI Reversal"
+        return "Scalp Reversal"
     
-    # MACD Crossover Strategy
-    elif abs(macd_hist) > 0.001 and ((macd > macd_signal and action == "BUY") or (macd < macd_signal and action == "SELL")):
-        return "MACD Crossover"
+    # 2. MACD Quick Flip (fast crossover on 1m)
+    elif abs(macd_hist) > 0.0005 and ((macd > macd_signal and action == "BUY") or (macd < macd_signal and action == "SELL")):
+        return "MACD Quick Flip"
     
-    # Tweet Momentum Strategy
-    elif tweet_bias == "BULLISH" and sentiment > 0.1 and action == "BUY":
-        return "Tweet Momentum"
-    elif tweet_bias == "BEARISH" and sentiment < -0.1 and action == "SELL":
-        return "Tweet Momentum"
+    # 3. Tweet Surge Entry (tweet-based scalping)
+    elif tweet_bias == "BULLISH" and sentiment > 0.05 and action == "BUY":
+        return "Tweet Surge Entry"
+    elif tweet_bias == "BEARISH" and sentiment < -0.05 and action == "SELL":
+        return "Tweet Surge Entry"
     
-    # Event Reaction Strategy
-    elif events and any(e.get('impact', '') == "High" for e in events):
-        return "Event Reaction"
-    
-    # News Sentiment Strategy
-    elif abs(sentiment) > 0.2:
-        if sentiment > 0.2 and action == "BUY":
-            return "News Sentiment Boost"
-        elif sentiment < -0.2 and action == "SELL":
-            return "News Sentiment Boost"
-    
-    # Breakout Strategy
-    elif atr > 0.002 and volume > 50000:
+    # 4. Breakout Scalping (price breaks + volume spike)
+    elif volume > 80000 and atr > 0.001:
         if price > bb_upper and action == "BUY":
-            return "Breakout"
+            return "Breakout Scalping"
         elif price < bb_lower and action == "SELL":
-            return "Breakout"
+            return "Breakout Scalping"
     
-    # Bollinger Squeeze Strategy
-    elif bb_upper > 0 and bb_lower > 0 and (bb_upper - bb_lower) / price < 0.02:
-        return "Bollinger Squeeze"
+    # 5. Micro Trend Pullback (small pullback in strong move)
+    elif 35 < rsi < 65 and abs(macd_hist) > 0.0002:
+        return "Micro Trend Pullback"
     
-    # Volume Spike Strategy
-    elif volume > 100000:  # High volume
-        return "Volume Spike Trade"
+    # 6. ATR Scalping Range (trading within ATR zones)
+    elif atr > 0.0008 and atr < 0.002:
+        return "ATR Scalping Range"
     
-    # Mean Reversion Strategy
-    elif 35 < rsi < 65 and abs(macd_hist) < 0.0005:
-        return "Mean Reversion"
+    # 7. News Sentiment Scalping (quick news-based entries)
+    elif abs(sentiment) > 0.15:
+        if sentiment > 0.15 and action == "BUY":
+            return "News Sentiment Scalping"
+        elif sentiment < -0.15 and action == "SELL":
+            return "News Sentiment Scalping"
     
-    # Trend Continuation Strategy
-    elif atr > 0.001 and ((rsi > 50 and action == "BUY") or (rsi < 50 and action == "SELL")):
-        return "Trend Continuation"
+    # 8. Fast Volume Spike (unusual volume for scalping)
+    elif volume > 120000:
+        return "Fast Volume Spike"
     
-    # Double Confirmation Strategy
-    elif ((rsi < 35 and macd > macd_signal) or (rsi > 65 and macd < macd_signal)) and abs(sentiment) > 0.1:
-        return "Double Confirmation"
+    # 9. Tight Range Scalping (consolidation breakout)
+    elif bb_upper > 0 and bb_lower > 0 and (bb_upper - bb_lower) / price < 0.015:
+        return "Tight Range Scalping"
     
-    # Scalping Opportunity (default for quick trades)
-    elif abs(macd_hist) > 0.0003 or abs(sentiment) > 0.05:
-        return "Scalping Opportunity"
-    
-    # Default fallback
+    # Default scalping strategy
     else:
-        return "General Strategy"
+        return "General Scalping"
 
 def create_enhanced_trade_record(
     symbol: str,
