@@ -824,54 +824,6 @@ function App() {
 
           {/* Middle Column */}
           <div className="space-y-6">
-            {/* Candlestick Chart */}
-            <div className="bg-white rounded-lg shadow">
-              <div className="p-4 border-b">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold text-gray-800">Scalping Chart - {selectedSymbol}</h3>
-                  <div className="flex items-center space-x-4">
-                    <select 
-                      value={chartInterval} 
-                      onChange={(e) => setChartInterval(e.target.value)}
-                      className="px-3 py-1 border border-gray-300 rounded text-sm"
-                    >
-                      <option value="1m">1 Min</option>
-                      <option value="5m">5 Min</option>
-                      <option value="15m">15 Min</option>
-                    </select>
-                    <select 
-                      value={autoRefreshInterval} 
-                      onChange={(e) => setAutoRefreshInterval(parseInt(e.target.value))}
-                      className="px-3 py-1 border border-gray-300 rounded text-sm"
-                    >
-                      <option value="10">10s</option>
-                      <option value="30">30s</option>
-                      <option value="60">1m</option>
-                    </select>
-                    <button
-                      onClick={() => setIsAutoRefresh(!isAutoRefresh)}
-                      className={`px-3 py-1 rounded text-sm ${isAutoRefresh ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}
-                    >
-                      {isAutoRefresh ? 'Auto ON' : 'Auto OFF'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div className="p-4">
-                <ChartErrorBoundary
-                  data={candlestickData[selectedSymbol] || []}
-                  symbol={selectedSymbol}
-                  height={350}
-                >
-                  <CandlestickChart 
-                    data={candlestickData[selectedSymbol] || []}
-                    symbol={selectedSymbol}
-                    height={350}
-                  />
-                </ChartErrorBoundary>
-              </div>
-            </div>
-
             {/* Scalping Signals */}
             <div className="bg-white rounded-lg shadow">
               <div className="p-4 border-b">
