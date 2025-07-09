@@ -48,6 +48,7 @@ function App() {
   const [scalpingRLPerformance, setScalpingRLPerformance] = useState({});
   const [chartInterval, setChartInterval] = useState('1m');
   const [autoRefreshInterval, setAutoRefreshInterval] = useState(30); // 30 seconds
+  const [currentView, setCurrentView] = useState('dashboard'); // dashboard, trade-history
   
   const intervalRef = useRef(null);
   const trainingIntervalRef = useRef(null);
