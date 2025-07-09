@@ -937,6 +937,32 @@ def create_enhanced_trade_record(
     
     return enhanced_trade
 
+def calculate_pips(entry_price, exit_price, symbol, action="BUY"):
+    """
+    Calculate pips correctly for different instruments
+    """
+    if symbol == 'XAUUSD':
+        # Gold: 1 pip = 0.1, so price difference * 10
+        pips = (exit_price - entry_price) * 10
+    elif symbol in ['EURUSD']:
+        # Major FX pairs: 1 pip = 0.0001, so price difference * 10000
+        pips = (exit_price - entry_price) * 10000
+    elif symbol in ['USDJPY', 'EURJPY']:
+        # JPY pairs: 1 pip = 0.01, so price difference * 100
+        pips = (exit_price - entry_price) * 100
+    elif symbol == 'NASDAQ':
+        # Index: 1 pip = 1 point
+        pips = (exit_price - entry_price)
+    else:
+        # Default calculation
+        pips = (exit_price - entry_price) * 10000
+    
+    # For SELL orders, reverse the calculation
+    if action == "SELL":
+        pips = -pips
+    
+    return round(pips, 1)
+
 def calculate_pips_and_profit(trade: EnhancedTrade, exit_price: float) -> EnhancedTrade:
     """Calculate pips and profit when trade is closed"""
     
