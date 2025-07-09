@@ -757,35 +757,96 @@ function App() {
 
           {/* Middle Column */}
           <div className="space-y-6">
-            {/* Price Chart */}
+            {/* Candlestick Chart */}
             <div className="bg-white rounded-lg shadow">
               <div className="p-4 border-b">
-                <h3 className="text-lg font-semibold text-gray-800">Price Chart - {selectedSymbol}</h3>
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold text-gray-800">Scalping Chart - {selectedSymbol}</h3>
+                  <div className="flex items-center space-x-4">
+                    <select 
+                      value={chartInterval} 
+                      onChange={(e) => setChartInterval(e.target.value)}
+                      className="px-3 py-1 border border-gray-300 rounded text-sm"
+                    >
+                      <option value="1m">1 Min</option>
+                      <option value="5m">5 Min</option>
+                      <option value="15m">15 Min</option>
+                    </select>
+                    <select 
+                      value={autoRefreshInterval} 
+                      onChange={(e) => setAutoRefreshInterval(parseInt(e.target.value))}
+                      className="px-3 py-1 border border-gray-300 rounded text-sm"
+                    >
+                      <option value="10">10s</option>
+                      <option value="30">30s</option>
+                      <option value="60">1m</option>
+                    </select>
+                    <button
+                      onClick={() => setIsAutoRefresh(!isAutoRefresh)}
+                      className={`px-3 py-1 rounded text-sm ${isAutoRefresh ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}
+                    >
+                      {isAutoRefresh ? 'Auto ON' : 'Auto OFF'}
+                    </button>
+                  </div>
+                </div>
               </div>
               <div className="p-4">
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={priceHistory}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                      <XAxis dataKey="time" stroke="#666" />
-                      <YAxis stroke="#666" />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: '#fff', 
-                          border: '1px solid #e0e0e0',
-                          borderRadius: '4px'
-                        }}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="price" 
-                        stroke="#3b82f6" 
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+                <CandlestickChart 
+                  data={candlestickData[selectedSymbol] || []}
+                  symbol={selectedSymbol}
+                  height={350}
+                />
+              </div>
+            </div>
+
+            {/* Scalping Signals */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-4 border-b">
+                <h3 className="text-lg font-semibold text-gray-800">Scalping Signals - {selectedSymbol}</h3>
+              </div>
+              <div className="p-4">
+                {scalpingSignals[selectedSymbol] && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Signal:</span>
+                      <span className={`px-3 py-1 rounded font-semibold ${
+                        scalpingSignals[selectedSymbol].action === 'BUY' ? 'bg-green-100 text-green-800' : 
+                        scalpingSignals[selectedSymbol].action === 'SELL' ? 'bg-red-100 text-red-800' : 
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {scalpingSignals[selectedSymbol].action}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Entry Price:</span>
+                      <span className="font-semibold">{scalpingSignals[selectedSymbol].entry_price?.toFixed(4)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Stop Loss:</span>
+                      <span className="font-semibold text-red-600">{scalpingSignals[selectedSymbol].stop_loss?.toFixed(4)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Take Profit:</span>
+                      <span className="font-semibold text-green-600">{scalpingSignals[selectedSymbol].take_profit?.toFixed(4)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Confidence:</span>
+                      <span className="font-semibold">{(scalpingSignals[selectedSymbol].confidence * 100).toFixed(1)}%</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Timeframe:</span>
+                      <span className="font-semibold">{scalpingSignals[selectedSymbol].timeframe}</span>
+                    </div>
+                    <div className="mt-4">
+                      <h4 className="font-semibold text-gray-700 mb-2">Reasons:</h4>
+                      <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        {scalpingSignals[selectedSymbol].reasons?.map((reason, index) => (
+                          <li key={index}>{reason}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
