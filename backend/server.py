@@ -151,6 +151,26 @@ class EnsemblePrediction(BaseModel):
     models_active: Dict[str, bool]
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
+class CandlestickData(BaseModel):
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: int
+    timestamp: datetime
+
+class ScalpingSignal(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    symbol: str
+    action: str  # BUY, SELL, HOLD
+    entry_price: float
+    stop_loss: float
+    take_profit: float
+    confidence: float
+    reasons: List[str]
+    timeframe: str  # 1m, 5m for scalping
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
 # Reinforcement Learning Agent
 class RLTradingAgent:
     def __init__(self, state_size=20, action_size=3, learning_rate=0.001):
