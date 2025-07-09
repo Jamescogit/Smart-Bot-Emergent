@@ -982,16 +982,27 @@ async def get_trading_history():
 @api_router.get("/model-status")
 async def get_model_status():
     """Get comprehensive ML model status"""
-    models_active = ensemble_ml_engine.models_trained
-    
-    return ModelStatus(
-        xgboost_active=models_active.get('xgboost', False),
-        catboost_active=models_active.get('catboost', False),
-        prophet_active=models_active.get('prophet', False),
-        tpot_active=models_active.get('tpot', False),
-        rl_agent_active=rl_agent is not None,
-        performance=model_performance
-    )
+    if ML_ENGINE_AVAILABLE and ensemble_ml_engine:
+        models_active = ensemble_ml_engine.models_trained
+        
+        return ModelStatus(
+            xgboost_active=models_active.get('xgboost', False),
+            catboost_active=models_active.get('catboost', False),
+            prophet_active=models_active.get('prophet', False),
+            tpot_active=models_active.get('tpot', False),
+            rl_agent_active=rl_agent is not None,
+            performance=model_performance
+        )
+    else:
+        # Fallback status
+        return ModelStatus(
+            xgboost_active=ml_models.get('xgboost') is not None,
+            catboost_active=ml_models.get('catboost') is not None,
+            prophet_active=ml_models.get('prophet') is not None,
+            tpot_active=False,
+            rl_agent_active=rl_agent is not None,
+            performance=model_performance
+        )
 
 @api_router.post("/train-models")
 async def train_models():
