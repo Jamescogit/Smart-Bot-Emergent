@@ -962,71 +962,144 @@ async def get_trading_history():
 
 @api_router.get("/model-status")
 async def get_model_status():
-    """Get ML model status"""
+    """Get comprehensive ML model status"""
+    models_active = ensemble_ml_engine.models_trained
+    
     return ModelStatus(
-        xgboost_active=ml_models.get('xgboost') is not None,
-        catboost_active=ml_models.get('catboost') is not None,
-        prophet_active=ml_models.get('prophet') is not None,
+        xgboost_active=models_active.get('xgboost', False),
+        catboost_active=models_active.get('catboost', False),
+        prophet_active=models_active.get('prophet', False),
+        tpot_active=models_active.get('tpot', False),
         rl_agent_active=rl_agent is not None,
         performance=model_performance
     )
 
 @api_router.post("/train-models")
 async def train_models():
-    """Train all ML models"""
-    global ml_models
-    
-    if len(feature_history) < 100:
-        raise HTTPException(status_code=400, detail="Insufficient data for training")
-    
+    """Train all specialized ML models"""
     try:
-        # Prepare training data
-        X = np.array(list(feature_history))
-        # Generate labels based on price movement (simplified)
-        y = np.random.choice([0, 1, 2], size=len(X), p=[0.3, 0.4, 0.3])
+        # Get training data from database
+        training_data_cursor = db.training_data.find().limit(300)
+        training_data = await training_data_cursor.to_list(300)
         
-        # Split data
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        if len(training_data) < 100:
+            raise HTTPException(status_code=400, detail="Insufficient training data")
         
-        # Scale features
-        scaler = StandardScaler()
-        X_train_scaled = scaler.fit_transform(X_train)
-        X_test_scaled = scaler.transform(X_test)
+        # Train all models using ensemble ML engine
+        training_results = await ensemble_ml_engine.train_all_models(training_data, "XAUUSD")
         
-        # Train XGBoost
-        xgb_model = xgb.XGBClassifier(n_estimators=100, max_depth=5, learning_rate=0.1)
-        xgb_model.fit(X_train_scaled, y_train)
-        xgb_pred = xgb_model.predict(X_test_scaled)
-        xgb_accuracy = accuracy_score(y_test, xgb_pred)
+        # Update global model performance
+        model_performance.update({
+            'ensemble_training': training_results.get('overall_success', False),
+            'models_trained': training_results.get('models_trained', 0),
+            'total_models': training_results.get('total_models', 4),
+            'last_trained': datetime.now().isoformat()
+        })
         
-        # Train CatBoost
-        catboost_model = CatBoostClassifier(iterations=100, learning_rate=0.1, depth=6, verbose=False)
-        catboost_model.fit(X_train_scaled, y_train)
-        cat_pred = catboost_model.predict(X_test_scaled)
-        cat_accuracy = accuracy_score(y_test, cat_pred)
-        
-        # Save models
-        ml_models['xgboost'] = xgb_model
-        ml_models['catboost'] = catboost_model
-        ml_models['scaler'] = scaler
-        
-        # Save to disk
-        joblib.dump(xgb_model, '/app/backend/models/xgb_model.pkl')
-        joblib.dump(catboost_model, '/app/backend/models/catboost_model.pkl')
-        joblib.dump(scaler, '/app/backend/models/scaler.pkl')
-        
-        # Update performance metrics
-        model_performance['xgboost_accuracy'] = xgb_accuracy
-        model_performance['catboost_accuracy'] = cat_accuracy
-        model_performance['last_trained'] = datetime.now().isoformat()
+        # Add individual model performance
+        detailed_results = training_results.get('detailed_results', {})
+        for model_name, result in detailed_results.items():
+            if result.get('success', False):
+                model_performance[f'{model_name}_accuracy'] = result.get('accuracy', 0.0)
         
         return {
-            "message": "Models trained successfully",
-            "xgboost_accuracy": xgb_accuracy,
-            "catboost_accuracy": cat_accuracy
+            "message": "Advanced ML models trained successfully",
+            "overall_success": training_results.get('overall_success', False),
+            "models_trained": training_results.get('models_trained', 0),
+            "total_models": training_results.get('total_models', 4),
+            "detailed_results": detailed_results,
+            "specializations": {
+                "xgboost": "Price Movement Prediction (>70% probability triggers trades)",
+                "catboost": "Sentiment Impact Modeling (news headlines → price impact)",
+                "tpot": "Automatic Pattern Discovery (finds optimal trading patterns)",
+                "prophet": "Time Series Forecasting (trend analysis & seasonality)"
+            }
         }
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Training failed: {str(e)}")
+
+@api_router.get("/ensemble-prediction/{symbol}")
+async def get_ensemble_prediction(symbol: str):
+    """Get detailed ensemble prediction from all ML models"""
+    if symbol not in SYMBOLS:
+        raise HTTPException(status_code=400, detail="Invalid symbol")
+    
+    try:
+        # Get market data and indicators
+        market_data = await fetch_live_data(symbol)
+        if not market_data:
+            raise HTTPException(status_code=404, detail="Market data not found")
+        
+        historical_data = await fetch_historical_data(symbol)
+        if historical_data.empty:
+            raise HTTPException(status_code=404, detail="Historical data not found")
+        
+        indicators = calculate_technical_indicators(historical_data)
+        
+        # Get ensemble prediction
+        ensemble_prediction = await ensemble_ml_engine.get_ensemble_prediction(
+            symbol, market_data, indicators
+        )
+        
+        return EnsemblePrediction(**ensemble_prediction)
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ensemble prediction failed: {str(e)}")
+
+@api_router.get("/model-specializations")
+async def get_model_specializations():
+    """Get information about each model's specialization"""
+    return {
+        "xgboost": {
+            "name": "XGBoost Price Predictor",
+            "specialization": "Price Movement Prediction",
+            "description": "Collects RSI, EMA, MACD, volume, news sentiment, and event flags to predict if price will go UP or DOWN next. Only triggers trades when probability > 70%.",
+            "features": [
+                "RSI, EMA, MACD, volume analysis",
+                "News sentiment integration",
+                "Event flag detection",
+                "High-confidence trading signals (>70%)"
+            ],
+            "active": ensemble_ml_engine.models_trained.get('xgboost', False)
+        },
+        "catboost": {
+            "name": "CatBoost Sentiment Analyzer",
+            "specialization": "Sentiment Impact Modeling",
+            "description": "Reads news headlines, converts them to sentiment signals, learns how news affects price, and uses that to boost trading accuracy.",
+            "features": [
+                "Real-time news headline analysis",
+                "Sentiment-to-price impact learning",
+                "Trading accuracy enhancement",
+                "Market sentiment scoring"
+            ],
+            "active": ensemble_ml_engine.models_trained.get('catboost', False)
+        },
+        "tpot": {
+            "name": "TPOT Pattern Discovery",
+            "specialization": "Automatic Pattern Discovery",
+            "description": "Automatically discovers hidden trading patterns and creates optimal feature combinations to find the best ML pipeline.",
+            "features": [
+                "Automated pattern recognition",
+                "Optimal feature combination",
+                "Best ML pipeline discovery",
+                "Hidden pattern detection"
+            ],
+            "active": ensemble_ml_engine.models_trained.get('tpot', False)
+        },
+        "prophet": {
+            "name": "Prophet Time Series Forecaster",
+            "specialization": "Time Series Forecasting",
+            "description": "Forecasts future price movements using time series analysis, identifies trends, seasonality, and provides long-term direction predictions.",
+            "features": [
+                "Future price forecasting",
+                "Trend identification",
+                "Seasonality analysis",
+                "Long-term direction prediction"
+            ],
+            "active": ensemble_ml_engine.models_trained.get('prophet', False)
+        }
+    }
 
 @api_router.post("/backtest/{symbol}")
 async def run_backtest(symbol: str, start_date: str, end_date: str):
