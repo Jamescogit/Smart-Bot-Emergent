@@ -2160,6 +2160,43 @@ async def get_trade_analysis():
             "summary": {"total_trades": 0, "avg_profit": 0, "avg_pips": 0}
         }
 
+@api_router.get("/bot-health")
+async def get_bot_health():
+    """Get bot health metrics including RL agent status"""
+    try:
+        global scalping_rl_agent, rl_agent
+        
+        health_data = {
+            "scalping_rl_agent": {
+                "status": "active" if scalping_rl_agent else "inactive",
+                "epsilon": scalping_rl_agent.epsilon if scalping_rl_agent else 0.0,
+                "memory_size": len(scalping_rl_agent.memory) if scalping_rl_agent else 0,
+                "learning_rate": scalping_rl_agent.lr if scalping_rl_agent else 0.0,
+                "trades_made": scalping_rl_agent.trades_made if scalping_rl_agent else 0,
+                "current_streak": scalping_rl_agent.current_streak if scalping_rl_agent else 0
+            },
+            "regular_rl_agent": {
+                "status": "active" if rl_agent else "inactive",
+                "epsilon": rl_agent.epsilon if rl_agent else 0.0,
+                "memory_size": len(rl_agent.memory) if rl_agent else 0,
+                "learning_rate": rl_agent.lr if rl_agent else 0.0
+            },
+            "system_health": {
+                "ml_engine_available": ML_ENGINE_AVAILABLE,
+                "models_loaded": len([k for k, v in ml_models.items() if v is not None]) if ml_models else 0,
+                "price_history_size": len(price_history) if price_history else 0
+            }
+        }
+        
+        return health_data
+    except Exception as e:
+        return {
+            "error": str(e),
+            "scalping_rl_agent": {"status": "error"},
+            "regular_rl_agent": {"status": "error"},
+            "system_health": {"status": "error"}
+        }
+
 @api_router.get("/performance-metrics")
 async def get_performance_metrics():
     """Get comprehensive performance metrics"""
