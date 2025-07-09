@@ -157,39 +157,99 @@ class TradingBotAPITester:
             print(f"  CatBoost Accuracy: {response.get('catboost_accuracy')}")
         return success
 
-    def test_backtest(self, symbol):
-        """Test backtest endpoint for a symbol"""
-        from datetime import timedelta
-        today = datetime.now().strftime('%Y-%m-%d')
-        # 30 days ago
-        start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
-        
+    def test_candlestick_data(self, symbol, interval='1m'):
+        """Test candlestick data endpoint for a symbol with specific interval"""
         success, response = self.run_test(
-            f"Backtest for {symbol}",
-            "POST",
-            f"backtest/{symbol}?start_date={start_date}&end_date={today}",
+            f"Candlestick Data for {symbol} (interval: {interval})",
+            "GET",
+            f"candlestick-data/{symbol}?interval={interval}",
             200
         )
         if success and response:
-            print(f"  Total Trades: {response.get('total_trades')}")
-            print(f"  Win Rate: {response.get('win_rate')}")
-            print(f"  Total Profit: {response.get('total_profit')}")
+            print(f"  Symbol: {response.get('symbol')}")
+            print(f"  Interval: {response.get('interval')}")
+            data = response.get('data', [])
+            print(f"  Number of candles: {len(data)}")
+            if data:
+                print(f"  Sample candle: {data[0]}")
+                # Verify candle structure
+                candle = data[0]
+                required_fields = ['timestamp', 'open', 'high', 'low', 'close', 'volume']
+                all_fields_present = all(field in candle for field in required_fields)
+                if all_fields_present:
+                    print("  ✅ Candle structure is valid")
+                else:
+                    print("  ❌ Candle structure is missing fields")
+                    success = False
         return success
 
-    def test_export_trades(self):
-        """Test export trades endpoint"""
+    def test_scalping_signal(self, symbol):
+        """Test scalping signal endpoint for a symbol"""
         success, response = self.run_test(
-            "Export Trades",
+            f"Scalping Signal for {symbol}",
             "GET",
-            "export-trades",
+            f"scalping-signal/{symbol}",
             200
         )
         if success and response:
-            print(f"  Message: {response.get('message')}")
-            print(f"  Total Trades: {response.get('total_trades')}")
-            # Check if CSV data exists
-            if isinstance(response, dict) and 'csv_data' in response:
-                print(f"  CSV Data Length: {len(response.get('csv_data'))} characters")
+            print(f"  Symbol: {response.get('symbol')}")
+            print(f"  Action: {response.get('action')}")
+            print(f"  Entry Price: {response.get('entry_price')}")
+            print(f"  Stop Loss: {response.get('stop_loss')}")
+            print(f"  Take Profit: {response.get('take_profit')}")
+            print(f"  Confidence: {response.get('confidence')}")
+            print(f"  Timeframe: {response.get('timeframe')}")
+            
+            # Verify signal structure
+            required_fields = ['symbol', 'action', 'entry_price', 'stop_loss', 'take_profit', 'confidence', 'reasons', 'timeframe']
+            all_fields_present = all(field in response for field in required_fields)
+            if all_fields_present:
+                print("  ✅ Signal structure is valid")
+            else:
+                print("  ❌ Signal structure is missing fields")
+                success = False
+        return success
+
+    def test_scalping_rl_performance(self):
+        """Test scalping RL performance endpoint"""
+        success, response = self.run_test(
+            "Scalping RL Performance",
+            "GET",
+            "scalping-rl-performance",
+            200
+        )
+        if success and response:
+            print(f"  Trades Made: {response.get('trades_made')}")
+            print(f"  Winning Trades: {response.get('winning_trades')}")
+            print(f"  Win Rate: {response.get('win_rate')}")
+            print(f"  Total Pips: {response.get('total_pips')}")
+            print(f"  Current Streak: {response.get('current_streak')}")
+            
+            # Verify performance metrics structure
+            required_fields = ['trades_made', 'winning_trades', 'win_rate', 'total_pips', 'current_streak']
+            all_fields_present = all(field in response for field in required_fields)
+            if all_fields_present:
+                print("  ✅ Performance metrics structure is valid")
+            else:
+                print("  ❌ Performance metrics structure is missing fields")
+                success = False
+        return success
+
+    def test_mock_trades(self):
+        """Test mock trades endpoint for ObjectId serialization"""
+        success, response = self.run_test(
+            "Mock Trades",
+            "GET",
+            "mock-trades",
+            200
+        )
+        if success:
+            if isinstance(response, list):
+                print(f"  Number of mock trades: {len(response)}")
+                if response:
+                    print(f"  Sample trade: {response[0]}")
+            else:
+                print(f"  Response: {response}")
         return success
 
     def run_all_tests(self):
