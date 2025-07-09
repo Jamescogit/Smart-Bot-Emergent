@@ -830,6 +830,38 @@ def get_strategy_label(indicators, sentiment=0, tweet_bias="NEUTRAL", events=Non
     else:
         return "General Scalping"
 
+def should_trade_scalping(indicators, sentiment, tweet_bias, symbol):
+    """
+    Determine if conditions are suitable for scalping trades
+    """
+    # Check volatility - need minimum volatility for scalping
+    atr = indicators.get('ATR', 0)
+    if atr < 0.0008:  # Too low volatility
+        return False, "Volatility too low for scalping"
+    
+    if atr > 0.003:  # Too high volatility - risky
+        return False, "Volatility too high - market too volatile"
+    
+    # Check if we have directional bias
+    rsi = indicators.get('RSI', 50)
+    macd_hist = indicators.get('MACD_hist', 0)
+    
+    # Need some directional signal
+    has_rsi_signal = rsi < 35 or rsi > 65
+    has_macd_signal = abs(macd_hist) > 0.0002
+    has_sentiment_signal = abs(sentiment) > 0.1 or tweet_bias != "NEUTRAL"
+    
+    if not (has_rsi_signal or has_macd_signal or has_sentiment_signal):
+        return False, "No clear directional signal"
+    
+    # Check volume - need sufficient volume for scalping
+    volume = indicators.get('volume', 0)
+    if volume < 40000:
+        return False, "Volume too low for scalping"
+    
+    # All conditions met
+    return True, "Good conditions for scalping"
+
 def create_enhanced_trade_record(
     symbol: str,
     action: str,
