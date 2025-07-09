@@ -11,7 +11,7 @@ const API = `${BACKEND_URL}/api`;
 
 const SYMBOLS = ['XAUUSD', 'EURUSD', 'EURJPY', 'USDJPY', 'NASDAQ'];
 
-// Colors for Notika-style theme
+// Colors for Cash-style theme
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
 function App() {
