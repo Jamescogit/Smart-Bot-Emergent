@@ -1251,6 +1251,37 @@ async def populate_sample_data():
             if profit < 0:
                 pips = -pips
             
+            # Generate technical indicators for intelligent strategy labeling
+            rsi_value = np.random.randint(20, 80)
+            macd_value = np.random.uniform(-0.002, 0.002)
+            macd_signal = macd_value + np.random.uniform(-0.0005, 0.0005)
+            atr_value = np.random.uniform(0.0005, 0.003)
+            volume_value = np.random.randint(10000, 150000)
+            news_sentiment = round(np.random.uniform(-0.5, 0.5), 2)
+            tweet_bias = np.random.choice(['BULLISH', 'BEARISH', 'NEUTRAL'])
+            
+            # Create technical indicators dict for strategy determination
+            technical_indicators = {
+                'RSI': rsi_value,
+                'MACD': macd_value,
+                'MACD_signal': macd_signal,
+                'MACD_hist': macd_value - macd_signal,
+                'ATR': atr_value,
+                'price': entry_price,
+                'volume': volume_value,
+                'BB_upper': entry_price * 1.02,
+                'BB_lower': entry_price * 0.98
+            }
+            
+            # Generate intelligent strategy label
+            intelligent_strategy = get_strategy_label(
+                indicators=technical_indicators,
+                sentiment=news_sentiment,
+                tweet_bias=tweet_bias,
+                events=[],
+                action=action
+            )
+            
             trade = {
                 'id': str(uuid.uuid4()),
                 'symbol': symbol,
@@ -1263,7 +1294,7 @@ async def populate_sample_data():
                 'is_closed': True,
                 'timestamp': datetime.now() - timedelta(days=np.random.randint(1, 30)),
                 'close_timestamp': datetime.now() - timedelta(days=np.random.randint(0, 29)),
-                'bot_strategy': np.random.choice(strategies)
+                'bot_strategy': intelligent_strategy  # Use intelligent strategy
             }
             sample_trades.append(trade)
         
