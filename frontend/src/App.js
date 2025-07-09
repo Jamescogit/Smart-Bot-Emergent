@@ -456,6 +456,34 @@ function App() {
         </div>
       </header>
 
+      {/* Navigation Tabs */}
+      <div className="bg-white border-b">
+        <div className="px-6">
+          <nav className="flex space-x-8">
+            <button
+              onClick={() => setCurrentView('dashboard')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                currentView === 'dashboard'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              📊 Trading Dashboard
+            </button>
+            <button
+              onClick={() => setCurrentView('trade-history')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                currentView === 'trade-history'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              📈 Enhanced Trade History
+            </button>
+          </nav>
+        </div>
+      </div>
+
       {/* Main Content */}
       <div className="p-6">
         {/* Statistics Cards Row */}
