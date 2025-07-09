@@ -260,19 +260,45 @@ class TradingBotAPITester:
         # Health check
         self.test_health_check()
         
-        # Test for each symbol
+        # Test yfinance integration via candlestick data endpoint
+        print("\n📊 Testing yfinance Integration and Candlestick Data API")
+        print("-" * 50)
+        for symbol in self.symbols:
+            # Test with different intervals for XAUUSD
+            if symbol == 'XAUUSD':
+                for interval in ['1m', '5m', '15m']:
+                    self.test_candlestick_data(symbol, interval)
+            else:
+                self.test_candlestick_data(symbol)
+        
+        # Test scalping signal API
+        print("\n📈 Testing Scalping Signal API")
+        print("-" * 50)
+        for symbol in self.symbols:
+            self.test_scalping_signal(symbol)
+        
+        # Test scalping RL agent performance
+        print("\n🤖 Testing Scalping RL Agent Performance")
+        print("-" * 50)
+        self.test_scalping_rl_performance()
+        
+        # Test ObjectId serialization fix
+        print("\n🔄 Testing ObjectId Serialization Fix")
+        print("-" * 50)
+        self.test_trading_history()
+        self.test_mock_trades()
+        
+        # Test other endpoints
+        print("\n🔍 Testing Other API Endpoints")
+        print("-" * 50)
         for symbol in self.symbols:
             self.test_market_data(symbol)
             self.test_technical_indicators(symbol)
             self.test_trading_signal(symbol)
         
-        # Other endpoints
         self.test_tweet_input()
-        self.test_trading_history()
         self.test_model_status()
         self.test_train_models()
-        self.test_backtest(self.symbols[0])  # Test backtest for first symbol
-        self.test_export_trades()
         
         # Print summary
         print("\n" + "=" * 50)
