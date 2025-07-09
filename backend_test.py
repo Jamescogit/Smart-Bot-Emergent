@@ -21,9 +21,9 @@ class TradingBotAPITester:
         
         try:
             if method == 'GET':
-                response = requests.get(url, headers=headers)
+                response = requests.get(url, headers=headers, allow_redirects=True)
             elif method == 'POST':
-                response = requests.post(url, json=data, headers=headers)
+                response = requests.post(url, json=data, headers=headers, allow_redirects=True)
 
             success = response.status_code == expected_status
             if success:
