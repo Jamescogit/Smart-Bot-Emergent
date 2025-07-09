@@ -575,7 +575,70 @@ async def initialize_system():
         'scaler': None
     }
     
+    # Populate some sample trading data
+    await populate_sample_data()
+    
     print("Trading system initialized successfully!")
+
+async def populate_sample_data():
+    """Populate database with sample trading data"""
+    try:
+        # Check if we already have data
+        existing_trades = await db.trades.count_documents({})
+        if existing_trades > 0:
+            print("Sample data already exists, skipping population.")
+            return
+        
+        print("Populating sample trading data...")
+        
+        # Generate sample trades
+        sample_trades = []
+        for i in range(50):
+            symbol = np.random.choice(SYMBOLS)
+            action = np.random.choice(['BUY', 'SELL'])
+            entry_price = np.random.uniform(100, 3000) if symbol == 'XAUUSD' else np.random.uniform(1, 200)
+            exit_price = entry_price * (1 + np.random.uniform(-0.05, 0.05))
+            quantity = np.random.uniform(0.1, 2.0)
+            profit = (exit_price - entry_price) * quantity if action == 'BUY' else (entry_price - exit_price) * quantity
+            pips = abs(exit_price - entry_price) * 10000 if 'USD' in symbol else abs(exit_price - entry_price) * 100
+            if profit < 0:
+                pips = -pips
+            
+            trade = {
+                'id': str(uuid.uuid4()),
+                'symbol': symbol,
+                'action': action,
+                'entry_price': entry_price,
+                'exit_price': exit_price,
+                'quantity': quantity,
+                'profit': profit,
+                'pips': pips,
+                'is_closed': True,
+                'timestamp': datetime.now() - timedelta(days=np.random.randint(1, 30)),
+                'close_timestamp': datetime.now() - timedelta(days=np.random.randint(0, 29))
+            }
+            sample_trades.append(trade)
+        
+        # Insert sample trades
+        if sample_trades:
+            await db.trades.insert_many(sample_trades)
+            print(f"Inserted {len(sample_trades)} sample trades")
+        
+        # Generate sample market data
+        for symbol in SYMBOLS:
+            market_data = await fetch_live_data(symbol)
+            if market_data:
+                await db.market_data.insert_one(market_data)
+        
+        # Generate sample feature history for ML training
+        for _ in range(200):
+            features = np.random.randn(18)  # 18 features for ML model
+            feature_history.append(features)
+        
+        print("Sample data population completed!")
+        
+    except Exception as e:
+        print(f"Error populating sample data: {e}")
 
 # Background task for real-time data updates
 async def update_market_data():
