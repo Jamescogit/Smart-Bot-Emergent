@@ -390,6 +390,117 @@ async def fetch_live_data(symbol: str) -> Optional[Dict]:
     
     return None
 
+async def fetch_candlestick_data(symbol: str, period: str = '1d', interval: str = '1m') -> List[Dict]:
+    """Fetch candlestick data using yfinance for scalping"""
+    try:
+        # Map our symbols to yfinance symbols
+        yf_symbol_map = {
+            'XAUUSD': 'GC=F',  # Gold futures
+            'EURUSD': 'EURUSD=X',
+            'EURJPY': 'EURJPY=X', 
+            'USDJPY': 'USDJPY=X',
+            'NASDAQ': '^IXIC'
+        }
+        
+        yf_symbol = yf_symbol_map.get(symbol, symbol)
+        
+        # Get data for the last few hours (good for scalping)
+        ticker = yf.Ticker(yf_symbol)
+        data = ticker.history(period=period, interval=interval)
+        
+        if data.empty:
+            print(f"No data found for {symbol}, generating sample data")
+            return generate_sample_candlestick_data(symbol, interval)
+        
+        # Convert to candlestick format
+        candlesticks = []
+        for timestamp, row in data.iterrows():
+            candlesticks.append({
+                'timestamp': timestamp.isoformat(),
+                'open': float(row['Open']),
+                'high': float(row['High']),
+                'low': float(row['Low']),
+                'close': float(row['Close']),
+                'volume': int(row['Volume']) if not pd.isna(row['Volume']) else 0
+            })
+        
+        return candlesticks[-100:]  # Return last 100 candles
+        
+    except Exception as e:
+        print(f"Error fetching candlestick data for {symbol}: {e}")
+        return generate_sample_candlestick_data(symbol, interval)
+
+def generate_sample_candlestick_data(symbol: str, interval: str = '1m') -> List[Dict]:
+    """Generate sample candlestick data for fallback"""
+    
+    # Base prices for different symbols
+    base_prices = {
+        'XAUUSD': 2650.0,
+        'EURUSD': 1.0500,
+        'EURJPY': 164.0,
+        'USDJPY': 156.0,
+        'NASDAQ': 20000.0
+    }
+    
+    base_price = base_prices.get(symbol, 100.0)
+    
+    # Different volatility for different symbols
+    volatilities = {
+        'XAUUSD': 0.001,  # 0.1% 
+        'EURUSD': 0.0005,  # 0.05%
+        'EURJPY': 0.001,   # 0.1%
+        'USDJPY': 0.001,   # 0.1%
+        'NASDAQ': 0.002    # 0.2%
+    }
+    
+    volatility = volatilities.get(symbol, 0.001)
+    
+    # Generate time intervals
+    now = datetime.now()
+    if interval == '1m':
+        time_delta = timedelta(minutes=1)
+        periods = 100
+    elif interval == '5m':
+        time_delta = timedelta(minutes=5)
+        periods = 100
+    else:
+        time_delta = timedelta(hours=1)
+        periods = 100
+    
+    candlesticks = []
+    current_price = base_price
+    
+    for i in range(periods):
+        timestamp = now - time_delta * (periods - i - 1)
+        
+        # Generate realistic OHLC data for scalping
+        open_price = current_price
+        
+        # Random walk for the period
+        price_change = np.random.normal(0, volatility * base_price)
+        high_price = open_price + abs(np.random.normal(0, volatility * base_price * 0.5))
+        low_price = open_price - abs(np.random.normal(0, volatility * base_price * 0.5))
+        close_price = open_price + price_change
+        
+        # Ensure OHLC consistency
+        high_price = max(high_price, open_price, close_price)
+        low_price = min(low_price, open_price, close_price)
+        
+        volume = np.random.randint(10000, 100000)
+        
+        candlesticks.append({
+            'timestamp': timestamp.isoformat(),
+            'open': round(open_price, 4 if symbol in ['EURUSD', 'EURJPY', 'USDJPY'] else 2),
+            'high': round(high_price, 4 if symbol in ['EURUSD', 'EURJPY', 'USDJPY'] else 2),
+            'low': round(low_price, 4 if symbol in ['EURUSD', 'EURJPY', 'USDJPY'] else 2),
+            'close': round(close_price, 4 if symbol in ['EURUSD', 'EURJPY', 'USDJPY'] else 2),
+            'volume': volume
+        })
+        
+        current_price = close_price
+    
+    return candlesticks
+
 async def fetch_historical_data(symbol: str, period: str = '1d') -> pd.DataFrame:
     """Fetch historical data for technical analysis"""
     try:
