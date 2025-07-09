@@ -1653,6 +1653,32 @@ async def stop_training():
     """Stop the training simulation"""
     return await training_simulator.stop_training()
 
+@api_router.get("/scalping-rl-performance")
+async def get_scalping_rl_performance():
+    """Get scalping RL agent performance metrics"""
+    global scalping_rl_agent
+    
+    if scalping_rl_agent is None:
+        return {
+            "error": "Scalping RL agent not initialized",
+            "metrics": {
+                "trades_made": 0,
+                "winning_trades": 0,
+                "win_rate": 0,
+                "total_pips": 0,
+                "current_streak": 0,
+                "epsilon": 1.0
+            }
+        }
+    
+    metrics = scalping_rl_agent.get_performance_metrics()
+    return {
+        "agent_type": "Scalping RL Agent",
+        "status": "active",
+        "metrics": metrics,
+        "description": "High-frequency trading agent optimized for scalping strategies (1-5 minute trades)"
+    }
+
 @api_router.get("/mock-trades")
 async def get_mock_trades():
     """Get recent mock trades from training"""
