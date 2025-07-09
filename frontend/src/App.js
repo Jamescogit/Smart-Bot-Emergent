@@ -1125,6 +1125,11 @@ function App() {
                       {trade.pips?.toFixed(1) || '-'}
                     </td>
                     <td className="p-4">
+                      <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                        {trade.bot_strategy || 'Default'}
+                      </span>
+                    </td>
+                    <td className="p-4">
                       <span className={`px-2 py-1 rounded text-xs ${trade.is_closed ? 'bg-gray-100 text-gray-800' : 'bg-blue-100 text-blue-800'}`}>
                         {trade.is_closed ? 'Closed' : 'Open'}
                       </span>
