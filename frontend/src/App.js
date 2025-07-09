@@ -1106,6 +1106,7 @@ function App() {
                   <th className="text-left p-4 font-medium text-gray-700">Exit Price</th>
                   <th className="text-left p-4 font-medium text-gray-700">Profit</th>
                   <th className="text-left p-4 font-medium text-gray-700">Pips</th>
+                  <th className="text-left p-4 font-medium text-gray-700">Bot Strategy</th>
                   <th className="text-left p-4 font-medium text-gray-700">Status</th>
                   <th className="text-left p-4 font-medium text-gray-700">Time</th>
                 </tr>
