@@ -896,16 +896,15 @@ def create_enhanced_trade_record(
             elif 'catboost' in ml_predictions and ml_predictions['catboost'].get('confidence', 0) > 0.7:
                 ml_decision = "CatBoost"
     
-    # Determine bot strategy
-    bot_strategy = "Default"
-    if rsi_value < 30 and action == "BUY":
-        bot_strategy = "RSI Reversal"
-    elif rsi_value > 70 and action == "SELL":
-        bot_strategy = "RSI Reversal"
-    elif abs(macd_value) > 0.001:
-        bot_strategy = "MACD Crossover"
-    elif scalping_signal and scalping_signal.get('confidence', 0) > 0.8:
-        bot_strategy = "Momentum Breakout"
+    # Determine bot strategy using intelligent logic
+    events = []  # Could be populated from economic calendar
+    bot_strategy = get_strategy_label(
+        indicators=technical_indicators,
+        sentiment=news_sentiment,
+        tweet_bias=tweet_bias,
+        events=events,
+        action=action
+    )
     
     # Determine risk level
     risk_level = "Medium"
