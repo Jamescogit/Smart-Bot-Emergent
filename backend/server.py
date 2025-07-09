@@ -1940,8 +1940,15 @@ def generate_sample_enhanced_trades() -> List[Dict]:
         }[symbol]
         
         exit_price = entry_price + np.random.uniform(-0.01, 0.01) * entry_price
-        pips_gained = np.random.uniform(-10, 15)
-        percentage_pl = np.random.uniform(-2, 3)
+        
+        # Use correct pip calculation
+        pips_gained = calculate_pips(entry_price, exit_price, symbol, action)
+        
+        # Calculate percentage P/L
+        if action == "BUY":
+            percentage_pl = ((exit_price - entry_price) / entry_price) * 100
+        else:  # SELL
+            percentage_pl = ((entry_price - exit_price) / entry_price) * 100
         
         rsi_value = np.random.randint(20, 80)
         macd_value = np.random.uniform(-0.002, 0.002)
