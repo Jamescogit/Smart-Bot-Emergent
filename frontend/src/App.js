@@ -5,6 +5,7 @@ import { TrendingUp, TrendingDown, Activity, Brain, Target, AlertCircle, Downloa
 import CandlestickChart from './CandlestickChart';
 import ChartErrorBoundary from './ChartErrorBoundary';
 import EnhancedTradeHistory from './EnhancedTradeHistory';
+import ScalpingDashboard from './ScalpingDashboard';
 import './App.css';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
