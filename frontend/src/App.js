@@ -488,6 +488,9 @@ function App() {
             >
               ⚡ Scalping Analytics
             </button>
+          </nav>
+        </div>
+      </div>
 
       {/* Main Content */}
       <div className="p-6">
