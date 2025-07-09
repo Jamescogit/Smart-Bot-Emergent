@@ -59,10 +59,12 @@ NEWS_API_KEY = os.environ.get('NEWS_API_KEY')
 # Global variables for models and data
 ml_models = {}
 rl_agent = None
+scalping_rl_agent = None
 feature_history = deque(maxlen=1000)
 price_history = {}
 trading_history = []
 model_performance = {}
+candlestick_history = {symbol: deque(maxlen=100) for symbol in SYMBOLS}
 
 # Initialize the specialized ML engine and training simulator
 ensemble_ml_engine = EnsembleMLEngine(news_api_key=NEWS_API_KEY) if ML_ENGINE_AVAILABLE else None
