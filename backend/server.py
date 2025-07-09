@@ -1732,6 +1732,12 @@ async def get_scalping_rl_performance():
 async def get_mock_trades():
     """Get recent mock trades from training"""
     trades = await db.mock_trades.find().sort("timestamp", -1).limit(50).to_list(50)
+    
+    # Convert ObjectId to string for JSON serialization
+    for trade in trades:
+        if '_id' in trade:
+            trade['_id'] = str(trade['_id'])
+    
     return {
         "trades": trades,
         "total_count": len(trades)
