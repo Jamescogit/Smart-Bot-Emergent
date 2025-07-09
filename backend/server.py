@@ -19,7 +19,6 @@ from collections import deque
 import schedule
 import time
 from concurrent.futures import ThreadPoolExecutor
-import pandas_ta as ta
 
 # ML Libraries
 import xgboost as xgb
@@ -220,6 +219,55 @@ class RLTradingAgent:
         self.W1 -= self.lr * dW1
         self.b1 -= self.lr * db1
 
+# Custom Technical Analysis Functions
+def calculate_rsi(prices, window=14):
+    """Calculate RSI indicator"""
+    delta = prices.diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean()
+    rs = gain / loss
+    rsi = 100 - (100 / (1 + rs))
+    return rsi.fillna(50)
+
+def calculate_macd(prices, fast=12, slow=26, signal=9):
+    """Calculate MACD indicator"""
+    exp1 = prices.ewm(span=fast).mean()
+    exp2 = prices.ewm(span=slow).mean()
+    macd_line = exp1 - exp2
+    signal_line = macd_line.ewm(span=signal).mean()
+    histogram = macd_line - signal_line
+    return macd_line, signal_line, histogram
+
+def calculate_bollinger_bands(prices, window=20, num_std=2):
+    """Calculate Bollinger Bands"""
+    rolling_mean = prices.rolling(window=window).mean()
+    rolling_std = prices.rolling(window=window).std()
+    upper_band = rolling_mean + (rolling_std * num_std)
+    lower_band = rolling_mean - (rolling_std * num_std)
+    return upper_band, rolling_mean, lower_band
+
+def calculate_stochastic(high, low, close, k_window=14, d_window=3):
+    """Calculate Stochastic Oscillator"""
+    lowest_low = low.rolling(window=k_window).min()
+    highest_high = high.rolling(window=k_window).max()
+    k_percent = 100 * ((close - lowest_low) / (highest_high - lowest_low))
+    d_percent = k_percent.rolling(window=d_window).mean()
+    return k_percent.fillna(50), d_percent.fillna(50)
+
+def calculate_atr(high, low, close, window=14):
+    """Calculate Average True Range"""
+    tr1 = high - low
+    tr2 = abs(high - close.shift())
+    tr3 = abs(low - close.shift())
+    tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+    atr = tr.rolling(window=window).mean()
+    return atr.fillna(0)
+
+def calculate_obv(close, volume):
+    """Calculate On-Balance Volume"""
+    obv = (np.sign(close.diff()) * volume).fillna(0).cumsum()
+    return obv.fillna(0)
+
 # Data Fetching Functions
 async def fetch_live_data(symbol: str) -> Optional[Dict]:
     """Fetch live market data from EODHD"""
@@ -287,66 +335,52 @@ async def fetch_historical_data(symbol: str, period: str = '1d') -> pd.DataFrame
     return pd.DataFrame()
 
 def calculate_technical_indicators(df: pd.DataFrame) -> Dict:
-    """Calculate technical indicators using pandas-ta"""
+    """Calculate technical indicators using custom functions"""
     if df.empty or len(df) < 20:
         return {}
     
     indicators = {}
     
     try:
-        # Moving averages
-        sma_20 = df.ta.sma(length=20)
-        sma_50 = df.ta.sma(length=50)
-        ema_12 = df.ta.ema(length=12)
-        ema_26 = df.ta.ema(length=26)
-        
-        indicators['SMA_20'] = sma_20.iloc[-1] if not sma_20.empty else 0
-        indicators['SMA_50'] = sma_50.iloc[-1] if not sma_50.empty else 0
-        indicators['EMA_12'] = ema_12.iloc[-1] if not ema_12.empty else 0
-        indicators['EMA_26'] = ema_26.iloc[-1] if not ema_26.empty else 0
+        close = df['close']
+        high = df['high']
+        low = df['low']
+        volume = df['volume']
         
         # RSI
-        rsi = df.ta.rsi(length=14)
+        rsi = calculate_rsi(close)
         indicators['RSI'] = rsi.iloc[-1] if not rsi.empty else 50
         
         # MACD
-        macd = df.ta.macd()
-        if macd is not None and not macd.empty:
-            indicators['MACD'] = macd['MACD_12_26_9'].iloc[-1]
-            indicators['MACD_signal'] = macd['MACDs_12_26_9'].iloc[-1]
-            indicators['MACD_hist'] = macd['MACDh_12_26_9'].iloc[-1]
-        else:
-            indicators['MACD'] = 0
-            indicators['MACD_signal'] = 0
-            indicators['MACD_hist'] = 0
+        macd, signal, hist = calculate_macd(close)
+        indicators['MACD'] = macd.iloc[-1] if not macd.empty else 0
+        indicators['MACD_signal'] = signal.iloc[-1] if not signal.empty else 0
+        indicators['MACD_hist'] = hist.iloc[-1] if not hist.empty else 0
         
         # Bollinger Bands
-        bbands = df.ta.bbands(length=20)
-        if bbands is not None and not bbands.empty:
-            indicators['BB_upper'] = bbands['BBU_20_2.0'].iloc[-1]
-            indicators['BB_middle'] = bbands['BBM_20_2.0'].iloc[-1]
-            indicators['BB_lower'] = bbands['BBL_20_2.0'].iloc[-1]
-        else:
-            indicators['BB_upper'] = df['close'].iloc[-1]
-            indicators['BB_middle'] = df['close'].iloc[-1]
-            indicators['BB_lower'] = df['close'].iloc[-1]
+        bb_upper, bb_middle, bb_lower = calculate_bollinger_bands(close)
+        indicators['BB_upper'] = bb_upper.iloc[-1] if not bb_upper.empty else close.iloc[-1]
+        indicators['BB_middle'] = bb_middle.iloc[-1] if not bb_middle.empty else close.iloc[-1]
+        indicators['BB_lower'] = bb_lower.iloc[-1] if not bb_lower.empty else close.iloc[-1]
         
         # Stochastic
-        stoch = df.ta.stoch()
-        if stoch is not None and not stoch.empty:
-            indicators['STOCH_K'] = stoch['STOCHk_14_3_3'].iloc[-1]
-            indicators['STOCH_D'] = stoch['STOCHd_14_3_3'].iloc[-1]
-        else:
-            indicators['STOCH_K'] = 50
-            indicators['STOCH_D'] = 50
+        stoch_k, stoch_d = calculate_stochastic(high, low, close)
+        indicators['STOCH_K'] = stoch_k.iloc[-1] if not stoch_k.empty else 50
+        indicators['STOCH_D'] = stoch_d.iloc[-1] if not stoch_d.empty else 50
         
         # ATR
-        atr = df.ta.atr(length=14)
+        atr = calculate_atr(high, low, close)
         indicators['ATR'] = atr.iloc[-1] if not atr.empty else 0
         
         # OBV
-        obv = df.ta.obv()
-        indicators['OBV'] = obv.iloc[-1] if obv is not None and not obv.empty else 0
+        obv = calculate_obv(close, volume)
+        indicators['OBV'] = obv.iloc[-1] if not obv.empty else 0
+        
+        # Moving averages
+        indicators['SMA_20'] = close.rolling(20).mean().iloc[-1] if len(close) >= 20 else close.iloc[-1]
+        indicators['SMA_50'] = close.rolling(50).mean().iloc[-1] if len(close) >= 50 else close.iloc[-1]
+        indicators['EMA_12'] = close.ewm(span=12).mean().iloc[-1]
+        indicators['EMA_26'] = close.ewm(span=26).mean().iloc[-1]
         
     except Exception as e:
         print(f"Error calculating indicators: {e}")
@@ -354,7 +388,8 @@ def calculate_technical_indicators(df: pd.DataFrame) -> Dict:
         default_indicators = {
             'RSI': 50, 'MACD': 0, 'MACD_signal': 0, 'MACD_hist': 0,
             'BB_upper': 0, 'BB_middle': 0, 'BB_lower': 0,
-            'STOCH_K': 50, 'STOCH_D': 50, 'ATR': 0, 'OBV': 0
+            'STOCH_K': 50, 'STOCH_D': 50, 'ATR': 0, 'OBV': 0,
+            'SMA_20': 0, 'SMA_50': 0, 'EMA_12': 0, 'EMA_26': 0
         }
         indicators.update(default_indicators)
     
