@@ -159,9 +159,10 @@ class TradingBotAPITester:
 
     def test_backtest(self, symbol):
         """Test backtest endpoint for a symbol"""
+        from datetime import timedelta
         today = datetime.now().strftime('%Y-%m-%d')
         # 30 days ago
-        start_date = datetime.now().replace(day=datetime.now().day - 30).strftime('%Y-%m-%d')
+        start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
         
         success, response = self.run_test(
             f"Backtest for {symbol}",
