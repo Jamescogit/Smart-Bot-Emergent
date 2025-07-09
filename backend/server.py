@@ -20,6 +20,9 @@ import schedule
 import time
 from concurrent.futures import ThreadPoolExecutor
 
+# Import the specialized ML engine
+from ml_engine import EnsembleMLEngine
+
 # ML Libraries
 import xgboost as xgb
 from catboost import CatBoostClassifier, Pool
@@ -49,6 +52,9 @@ feature_history = deque(maxlen=1000)
 price_history = {}
 trading_history = []
 model_performance = {}
+
+# Initialize the specialized ML engine
+ensemble_ml_engine = EnsembleMLEngine(news_api_key=NEWS_API_KEY)
 
 # Create the main app
 app = FastAPI(title="Advanced Trading Bot API", version="1.0.0")
