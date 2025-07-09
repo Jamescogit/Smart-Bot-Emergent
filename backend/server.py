@@ -2760,6 +2760,13 @@ async def train_models():
             ml_models['xgboost'] = xgb_model
             ml_models['scaler'] = scaler
             
+            # Save basic model training progress
+            try:
+                save_all_persistent_data()
+                print("💾 Saved basic XGBoost model training progress")
+            except Exception as e:
+                print(f"❌ Error saving basic model progress: {e}")
+            
             return {
                 "message": "Training simulation started with basic XGBoost model",
                 "xgboost_accuracy": xgb_accuracy,
