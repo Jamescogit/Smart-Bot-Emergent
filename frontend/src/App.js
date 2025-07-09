@@ -360,11 +360,10 @@ function App() {
     fetchTrainingMetrics();
     fetchModelComparison();
     
-    // Fetch candlestick data for scalping
-    fetchCandlestickData(selectedSymbol);
+    // Fetch scalping data
     fetchScalpingSignals(selectedSymbol);
     fetchScalpingRLPerformance();
-  }, [selectedSymbol, chartInterval]);
+  }, [selectedSymbol]);
 
   // Cleanup intervals
   useEffect(() => {
