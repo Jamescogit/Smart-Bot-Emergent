@@ -351,18 +351,23 @@ function App() {
         fetchTradingHistory();
         fetchModelStatus();
         
+        // Fetch candlestick data for scalping
+        fetchCandlestickData(selectedSymbol);
+        fetchScalpingSignals(selectedSymbol);
+        fetchScalpingRLPerformance();
+        
         // Fetch training data if training is active
         if (trainingStatus.is_training) {
           fetchTrainingStatus();
           fetchTrainingMetrics();
           fetchLiveTradeFeeds();
         }
-      }, 3000); // Update every 3 seconds
+      }, autoRefreshInterval * 1000); // Use configurable interval (default 30 seconds)
       
       intervalRef.current = interval;
       return () => clearInterval(interval);
     }
-  }, [isAutoRefresh, selectedSymbol, trainingStatus.is_training]);
+  }, [isAutoRefresh, selectedSymbol, trainingStatus.is_training, autoRefreshInterval, chartInterval]);
 
   // Initial data fetch
   useEffect(() => {
@@ -374,7 +379,12 @@ function App() {
     fetchTrainingStatus();
     fetchTrainingMetrics();
     fetchModelComparison();
-  }, [selectedSymbol]);
+    
+    // Fetch candlestick data for scalping
+    fetchCandlestickData(selectedSymbol);
+    fetchScalpingSignals(selectedSymbol);
+    fetchScalpingRLPerformance();
+  }, [selectedSymbol, chartInterval]);
 
   // Cleanup intervals
   useEffect(() => {
