@@ -934,14 +934,21 @@ def check_correlation(symbol1: str, symbol2: str, data1: pd.DataFrame, data2: pd
 # Initialize global components
 async def initialize_system():
     """Initialize the trading system"""
-    global rl_agent, ml_models, price_history
+    global rl_agent, ml_models, price_history, scalping_rl_agent, candlestick_history
     
     # Initialize RL agent
     rl_agent = RLTradingAgent(state_size=20)
     
+    # Initialize Scalping RL agent
+    scalping_rl_agent = ScalpingRLAgent(state_size=15)
+    
     # Initialize price history
     for symbol in SYMBOLS:
         price_history[symbol] = deque(maxlen=100)
+    
+    # Initialize candlestick history
+    for symbol in SYMBOLS:
+        candlestick_history[symbol] = deque(maxlen=100)
     
     # Initialize ML models dictionary
     ml_models = {
@@ -955,6 +962,7 @@ async def initialize_system():
     await populate_sample_data()
     
     print("Trading system initialized successfully!")
+    print("Scalping RL agent initialized for high-frequency trading")
 
 async def populate_sample_data():
     """Populate database with sample trading data"""
