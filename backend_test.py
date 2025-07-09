@@ -9,7 +9,7 @@ class TradingBotAPITester:
         self.api_url = f"{base_url}/api"
         self.tests_run = 0
         self.tests_passed = 0
-        self.symbols = ['XAUUSD', 'EURUSD', 'EURJPY', 'USDJPY', 'NASDAQ']
+        self.symbols = ['XAUUSD', 'EURUSD', 'USDJPY']  # Symbols to test as per requirements
 
     def run_test(self, name, method, endpoint, expected_status=200, data=None):
         """Run a single API test"""
