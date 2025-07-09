@@ -1126,11 +1126,11 @@ def calculate_technical_indicators(df: pd.DataFrame) -> Dict:
         obv = calculate_obv(close, volume)
         indicators['OBV'] = obv.iloc[-1] if not obv.empty else 0
         
-        # Moving averages
-        indicators['SMA_20'] = close.rolling(20).mean().iloc[-1] if len(close) >= 20 else close.iloc[-1]
-        indicators['SMA_50'] = close.rolling(50).mean().iloc[-1] if len(close) >= 50 else close.iloc[-1]
-        indicators['EMA_12'] = close.ewm(span=12).mean().iloc[-1]
-        indicators['EMA_26'] = close.ewm(span=26).mean().iloc[-1]
+        # Moving averages optimized for scalping
+        indicators['SMA_5'] = close.rolling(5).mean().iloc[-1] if len(close) >= 5 else close.iloc[-1]
+        indicators['SMA_10'] = close.rolling(10).mean().iloc[-1] if len(close) >= 10 else close.iloc[-1]
+        indicators['EMA_5'] = close.ewm(span=5).mean().iloc[-1] if len(close) >= 5 else close.iloc[-1]
+        indicators['EMA_10'] = close.ewm(span=10).mean().iloc[-1] if len(close) >= 10 else close.iloc[-1]
         
     except Exception as e:
         print(f"Error calculating indicators: {e}")
