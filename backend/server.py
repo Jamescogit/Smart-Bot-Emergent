@@ -20,6 +20,7 @@ from collections import deque
 import schedule
 import time
 from concurrent.futures import ThreadPoolExecutor
+import yfinance as yf
 
 # Add backend directory to path
 sys.path.append('/app/backend')
