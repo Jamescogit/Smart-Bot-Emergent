@@ -3,6 +3,7 @@ import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Area, AreaChart } from 'recharts';
 import { TrendingUp, TrendingDown, Activity, Brain, Target, AlertCircle, Download, Upload, Play, Pause, RefreshCw, Award, Zap, Users, DollarSign, TrendingDownIcon, BarChart3, PieChart as PieChartIcon } from 'lucide-react';
 import CandlestickChart from './CandlestickChart';
+import ChartErrorBoundary from './ChartErrorBoundary';
 import EnhancedTradeHistory from './EnhancedTradeHistory';
 import './App.css';
 
