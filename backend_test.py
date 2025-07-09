@@ -417,6 +417,15 @@ class TradingBotAPITester:
         self.test_trading_history()
         self.test_mock_trades()
         
+        # Test persistence implementation
+        print("\n💾 Testing Persistent Learning Implementation")
+        print("-" * 50)
+        self.test_persistence_files()
+        self.test_train_models()
+        self.test_periodic_save()
+        self.test_create_sample_trades()
+        self.test_performance_metrics()
+        
         # Test other endpoints
         print("\n🔍 Testing Other API Endpoints")
         print("-" * 50)
@@ -427,7 +436,6 @@ class TradingBotAPITester:
         
         self.test_tweet_input()
         self.test_model_status()
-        self.test_train_models()
         
         # Print summary
         print("\n" + "=" * 50)
