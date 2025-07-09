@@ -42,13 +42,11 @@ function App() {
   const [mockTrades, setMockTrades] = useState([]);
   const [showTrainingPanel, setShowTrainingPanel] = useState(false);
   
-  // New state for candlestick data and scalping
-  const [candlestickData, setCandlestickData] = useState({});
+  // New state for scalping
   const [scalpingSignals, setScalpingSignals] = useState({});
   const [scalpingRLPerformance, setScalpingRLPerformance] = useState({});
-  const [chartInterval, setChartInterval] = useState('1m');
   const [autoRefreshInterval, setAutoRefreshInterval] = useState(30); // 30 seconds
-  const [currentView, setCurrentView] = useState('dashboard'); // dashboard, trade-history
+  const [currentView, setCurrentView] = useState('dashboard'); // dashboard, trade-history, scalping
   
   const intervalRef = useRef(null);
   const trainingIntervalRef = useRef(null);
