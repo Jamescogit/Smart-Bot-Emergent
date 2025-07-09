@@ -259,6 +259,16 @@ async def periodic_save_task():
         except Exception as e:
             print(f"❌ Error in periodic save task: {e}")
             await asyncio.sleep(60)  # Wait a minute on error
+async def periodic_save_task():
+    """Background task to periodically save all data"""
+    while True:
+        try:
+            await asyncio.sleep(300)  # Save every 5 minutes
+            save_all_persistent_data()
+        except Exception as e:
+            print(f"❌ Error in periodic save task: {e}")
+            await asyncio.sleep(60)  # Wait a minute on error
+
 def load_all_persistent_data():
     """Load all persistent data in one call"""
     print("📂 Loading all persistent data...")
