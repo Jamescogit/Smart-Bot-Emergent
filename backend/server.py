@@ -714,6 +714,20 @@ class RLTradingAgent:
         
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
+        
+        # Save progress after training (every 10 training sessions)
+        if hasattr(self, 'training_count'):
+            self.training_count += 1
+        else:
+            self.training_count = 1
+            
+        if self.training_count % 10 == 0:
+            try:
+                # Import save function
+                save_rl_agents()
+                print(f"💾 Auto-saved RL agent progress (training #{self.training_count})")
+            except:
+                pass  # Don't break training if save fails
     
     def _train_step(self, X, y):
         # Forward pass
