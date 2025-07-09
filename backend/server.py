@@ -966,27 +966,14 @@ def calculate_pips(entry_price, exit_price, symbol, action="BUY"):
 def calculate_pips_and_profit(trade: EnhancedTrade, exit_price: float) -> EnhancedTrade:
     """Calculate pips and profit when trade is closed"""
     
-    # Pip values for different symbols
-    pip_values = {
-        'XAUUSD': 0.1,
-        'EURUSD': 0.0001,
-        'EURJPY': 0.01,
-        'USDJPY': 0.01,
-        'NASDAQ': 1.0
-    }
-    
-    pip_value = pip_values.get(trade.symbol, 0.01)
-    
-    # Calculate pips gained
-    if trade.action == "BUY":
-        pips_gained = (exit_price - trade.entry_price) / pip_value
-    else:  # SELL
-        pips_gained = (trade.entry_price - exit_price) / pip_value
+    # Use the correct pip calculation function
+    pips_gained = calculate_pips(trade.entry_price, exit_price, trade.symbol, trade.action)
     
     # Calculate percentage P/L
-    percentage_pl = ((exit_price - trade.entry_price) / trade.entry_price) * 100
-    if trade.action == "SELL":
-        percentage_pl = -percentage_pl
+    if trade.action == "BUY":
+        percentage_pl = ((exit_price - trade.entry_price) / trade.entry_price) * 100
+    else:  # SELL
+        percentage_pl = ((trade.entry_price - exit_price) / trade.entry_price) * 100
     
     # Update trade record
     trade.exit_price = exit_price
