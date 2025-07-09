@@ -530,11 +530,38 @@ function App() {
           <div className="bg-white rounded-lg shadow p-6 border-l-4 border-orange-500">
             <div className="flex items-center justify-between">
               <div>
+                <p className="text-sm font-medium text-gray-600">Bot Confidence</p>
+                <p className="text-2xl font-bold text-gray-900">{performanceMetrics.botConfidence || 0}%</p>
+              </div>
+              <div className="p-3 bg-orange-100 rounded-full">
+                <Brain className="w-6 h-6 text-orange-600" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Additional Stats Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 mb-6">
+          <div className="bg-white rounded-lg shadow p-6 border-l-4 border-red-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Number of Losses</p>
+                <p className="text-2xl font-bold text-gray-900">{performanceMetrics.totalLosses || 0}</p>
+              </div>
+              <div className="p-3 bg-red-100 rounded-full">
+                <TrendingDownIcon className="w-6 h-6 text-red-600" />
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow p-6 border-l-4 border-gray-500">
+            <div className="flex items-center justify-between">
+              <div>
                 <p className="text-sm font-medium text-gray-600">Total Pips</p>
                 <p className="text-2xl font-bold text-gray-900">{performanceMetrics.totalPips || 0}</p>
               </div>
-              <div className="p-3 bg-orange-100 rounded-full">
-                <TrendingUp className="w-6 h-6 text-orange-600" />
+              <div className="p-3 bg-gray-100 rounded-full">
+                <Target className="w-6 h-6 text-gray-600" />
               </div>
             </div>
           </div>
