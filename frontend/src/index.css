@@ -137,7 +137,7 @@
 }
 
 .trading-table tbody tr:hover {
-  @apply bg-gray-750;
+  @apply bg-gray-700;
 }
 
 /* Real-time update indicators */
