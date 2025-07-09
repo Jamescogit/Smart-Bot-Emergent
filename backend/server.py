@@ -128,9 +128,16 @@ class ModelStatus(BaseModel):
     xgboost_active: bool
     catboost_active: bool
     prophet_active: bool
+    tpot_active: bool
     rl_agent_active: bool
     last_trained: Optional[datetime] = None
     performance: Dict[str, float]
+
+class EnsemblePrediction(BaseModel):
+    ensemble_decision: Dict[str, Any]
+    individual_predictions: Dict[str, Any]
+    models_active: Dict[str, bool]
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 # Reinforcement Learning Agent
 class RLTradingAgent:
