@@ -334,10 +334,24 @@ const EnhancedTradeHistory = () => {
                     <td className="p-3 text-gray-700">{trade.tweet_bias}</td>
                   )}
                   {visibleColumns.botStrategy && (
-                    <td className="p-3 text-gray-700">{trade.bot_strategy}</td>
+                    <td className="p-3">
+                      <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                        {trade.bot_strategy}
+                      </span>
+                    </td>
                   )}
                   {visibleColumns.mlDecision && (
-                    <td className="p-3 text-gray-700">{trade.ml_decision}</td>
+                    <td className="p-3">
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        trade.ml_decision === 'XGBoost' ? 'bg-purple-100 text-purple-800' :
+                        trade.ml_decision === 'CatBoost' ? 'bg-indigo-100 text-indigo-800' :
+                        trade.ml_decision === 'Prophet' ? 'bg-cyan-100 text-cyan-800' :
+                        trade.ml_decision === 'RL Agent' ? 'bg-orange-100 text-orange-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {trade.ml_decision}
+                      </span>
+                    </td>
                   )}
                   {visibleColumns.riskLevel && (
                     <td className="p-3">
