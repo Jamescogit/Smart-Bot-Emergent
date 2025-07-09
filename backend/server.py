@@ -754,7 +754,153 @@ def generate_sample_candlestick_data(symbol: str, interval: str = '1m') -> List[
         
         current_price = close_price
     
-    return candlesticks
+def create_enhanced_trade_record(
+    symbol: str,
+    action: str,
+    entry_price: float,
+    confidence: float,
+    technical_indicators: Dict,
+    scalping_signal: Optional[Dict] = None,
+    news_sentiment: float = 0.0,
+    tweet_bias: str = "NEUTRAL",
+    ml_predictions: Optional[Dict] = None
+) -> EnhancedTrade:
+    """Create a comprehensive trade record with all tracking information"""
+    
+    # Calculate decision factors summary
+    decision_factors = []
+    rsi_value = technical_indicators.get('RSI', 50)
+    macd_value = technical_indicators.get('MACD', 0)
+    
+    if rsi_value < 30:
+        decision_factors.append("RSI Oversold")
+    elif rsi_value > 70:
+        decision_factors.append("RSI Overbought")
+    
+    if macd_value > 0:
+        decision_factors.append("MACD Bullish")
+    elif macd_value < 0:
+        decision_factors.append("MACD Bearish")
+    
+    if news_sentiment > 0.1:
+        decision_factors.append("Positive News")
+    elif news_sentiment < -0.1:
+        decision_factors.append("Negative News")
+    
+    if tweet_bias != "NEUTRAL":
+        decision_factors.append(f"Tweet: {tweet_bias}")
+    
+    # Determine trade type based on signals
+    trade_type = "Scalping"  # Default for our scalping bot
+    if scalping_signal and scalping_signal.get('timeframe') == '15m':
+        trade_type = "Swing"
+    
+    # Determine forecast trend from Prophet (if available)
+    forecast_trend = "NEUTRAL"
+    if ml_predictions and 'prophet' in ml_predictions:
+        prophet_pred = ml_predictions['prophet']
+        if isinstance(prophet_pred, dict) and 'trend' in prophet_pred:
+            forecast_trend = prophet_pred['trend']
+    
+    # Determine which ML model influenced the decision most
+    ml_decision = "RL Agent"  # Default
+    if ml_predictions:
+        if 'ensemble' in ml_predictions:
+            ensemble = ml_predictions['ensemble']
+            if isinstance(ensemble, dict) and 'primary_model' in ensemble:
+                ml_decision = ensemble['primary_model']
+        elif confidence > 0.7:
+            if 'xgboost' in ml_predictions and ml_predictions['xgboost'].get('confidence', 0) > 0.7:
+                ml_decision = "XGBoost"
+            elif 'catboost' in ml_predictions and ml_predictions['catboost'].get('confidence', 0) > 0.7:
+                ml_decision = "CatBoost"
+    
+    # Determine bot strategy
+    bot_strategy = "Default"
+    if rsi_value < 30 and action == "BUY":
+        bot_strategy = "RSI Reversal"
+    elif rsi_value > 70 and action == "SELL":
+        bot_strategy = "RSI Reversal"
+    elif abs(macd_value) > 0.001:
+        bot_strategy = "MACD Crossover"
+    elif scalping_signal and scalping_signal.get('confidence', 0) > 0.8:
+        bot_strategy = "Momentum Breakout"
+    
+    # Determine risk level
+    risk_level = "Medium"
+    volatility = technical_indicators.get('ATR', 0)
+    if volatility > 0.002:
+        risk_level = "High"
+    elif volatility < 0.001:
+        risk_level = "Low"
+    
+    # Create enhanced trade record
+    enhanced_trade = EnhancedTrade(
+        timestamp=datetime.utcnow(),
+        symbol=symbol,
+        action=action,
+        entry_price=entry_price,
+        confidence=confidence,
+        decision_factors=", ".join(decision_factors) if decision_factors else "No specific factors",
+        trade_type=trade_type,
+        forecast_trend=forecast_trend,
+        news_sentiment=news_sentiment,
+        tweet_bias=tweet_bias,
+        bot_strategy=bot_strategy,
+        ml_decision=ml_decision,
+        risk_level=risk_level,
+        rsi_value=rsi_value,
+        macd_value=macd_value,
+        volatility=volatility,
+        exit_reason="Open"
+    )
+    
+    return enhanced_trade
+
+def calculate_pips_and_profit(trade: EnhancedTrade, exit_price: float) -> EnhancedTrade:
+    """Calculate pips and profit when trade is closed"""
+    
+    # Pip values for different symbols
+    pip_values = {
+        'XAUUSD': 0.1,
+        'EURUSD': 0.0001,
+        'EURJPY': 0.01,
+        'USDJPY': 0.01,
+        'NASDAQ': 1.0
+    }
+    
+    pip_value = pip_values.get(trade.symbol, 0.01)
+    
+    # Calculate pips gained
+    if trade.action == "BUY":
+        pips_gained = (exit_price - trade.entry_price) / pip_value
+    else:  # SELL
+        pips_gained = (trade.entry_price - exit_price) / pip_value
+    
+    # Calculate percentage P/L
+    percentage_pl = ((exit_price - trade.entry_price) / trade.entry_price) * 100
+    if trade.action == "SELL":
+        percentage_pl = -percentage_pl
+    
+    # Update trade record
+    trade.exit_price = exit_price
+    trade.pips_gained = round(pips_gained, 1)
+    trade.percentage_pl = round(percentage_pl, 2)
+    trade.profit = round(pips_gained * trade.quantity, 2)
+    trade.is_closed = True
+    trade.close_timestamp = datetime.utcnow()
+    
+    # Determine exit reason based on performance
+    if pips_gained >= 10:
+        trade.exit_reason = "TP Hit"
+    elif pips_gained <= -5:
+        trade.exit_reason = "SL Hit"
+    elif trade.close_timestamp and (trade.close_timestamp - trade.timestamp).seconds > 300:  # 5 minutes
+        trade.exit_reason = "Timeout"
+    else:
+        trade.exit_reason = "Manual Rule"
+    
+    return trade
 
 async def fetch_historical_data(symbol: str, period: str = '1d') -> pd.DataFrame:
     """Fetch historical data for technical analysis"""
