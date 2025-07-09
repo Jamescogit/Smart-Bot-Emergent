@@ -193,21 +193,6 @@ function App() {
     }
   };
 
-  // Fetch candlestick data
-  const fetchCandlestickData = async (symbol) => {
-    try {
-      const response = await axios.get(`${API}/candlestick-data/${symbol}`, {
-        params: { period: '1d', interval: chartInterval }
-      });
-      setCandlestickData(prev => ({
-        ...prev,
-        [symbol]: response.data.data
-      }));
-    } catch (error) {
-      console.error('Error fetching candlestick data:', error);
-    }
-  };
-
   // Fetch scalping signals
   const fetchScalpingSignals = async (symbol) => {
     try {
