@@ -754,6 +754,8 @@ def generate_sample_candlestick_data(symbol: str, interval: str = '1m') -> List[
         
         current_price = close_price
     
+    return candlesticks
+
 def create_enhanced_trade_record(
     symbol: str,
     action: str,
