@@ -23,3 +23,19 @@ numpy>=1.26.0
 python-multipart>=0.0.9
 jq>=1.6.0
 typer>=0.9.0
+
+# ML and Trading Libraries
+xgboost>=2.0.0
+catboost>=1.2.0
+prophet>=1.1.5
+scikit-learn>=1.4.0
+ta-lib>=0.4.24
+pandas-ta>=0.3.14b
+scipy>=1.12.0
+joblib>=1.3.2
+
+# Additional libraries for trading
+yfinance>=0.2.18
+schedule>=1.2.0
+python-socketio>=5.10.0
+websockets>=12.0
