@@ -2721,13 +2721,17 @@ async def get_model_status():
     if ML_ENGINE_AVAILABLE and ensemble_ml_engine:
         models_active = ensemble_ml_engine.models_trained
         
+        # Filter model_performance to only include float values for Pydantic
+        float_performance = {k: v for k, v in model_performance.items() 
+                           if isinstance(v, (int, float))}
+        
         return ModelStatus(
             xgboost_active=models_active.get('xgboost', False),
             catboost_active=models_active.get('catboost', False),
             prophet_active=models_active.get('prophet', False),
             tpot_active=models_active.get('tpot', False),
             rl_agent_active=rl_agent is not None,
-            performance=model_performance
+            performance=float_performance
         )
     else:
         # Fallback status
