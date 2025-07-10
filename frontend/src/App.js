@@ -9,6 +9,10 @@ import './App.css';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
 const API = `${BACKEND_URL}/api`;
 
+console.log('🔍 Debug: REACT_APP_BACKEND_URL =', process.env.REACT_APP_BACKEND_URL);
+console.log('🔍 Debug: BACKEND_URL =', BACKEND_URL);
+console.log('🔍 Debug: API =', API);
+
 const SYMBOLS = ['XAUUSD', 'EURUSD', 'EURJPY', 'USDJPY', 'NASDAQ'];
 
 // Colors for Cash-style theme
