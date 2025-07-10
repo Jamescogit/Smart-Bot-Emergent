@@ -1103,36 +1103,66 @@ function App() {
             {/* Risk Management */}
             <div className="bg-white rounded-lg shadow">
               <div className="p-4 border-b">
-                <h3 className="text-lg font-semibold text-gray-800">Risk Management</h3>
+                <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+                  <DollarSign className="w-5 h-5 mr-2 text-green-600" />
+                  💰 Risk Management
+                </h3>
               </div>
               <div className="p-4">
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Max Drawdown (%)</label>
-                    <input
-                      type="number"
-                      value={riskSettings.maxDrawdown}
-                      onChange={(e) => setRiskSettings(prev => ({ ...prev, maxDrawdown: e.target.value }))}
-                      className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Starting Balance:</span>
+                    <span className="font-medium text-gray-800">
+                      ${riskManagement.starting_balance || 200}
+                    </span>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Position Size</label>
-                    <input
-                      type="number"
-                      value={riskSettings.positionSize}
-                      onChange={(e) => setRiskSettings(prev => ({ ...prev, positionSize: e.target.value }))}
-                      className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                  
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Current Balance:</span>
+                    <span className={`font-medium ${
+                      riskManagement.current_balance >= riskManagement.starting_balance 
+                        ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      ${riskManagement.current_balance || 200}
+                    </span>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Risk per Trade (%)</label>
-                    <input
-                      type="number"
-                      value={riskSettings.riskPercentage}
-                      onChange={(e) => setRiskSettings(prev => ({ ...prev, riskPercentage: e.target.value }))}
-                      className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                  
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">P&L:</span>
+                    <span className={`font-medium ${
+                      riskManagement.pnl_percentage >= 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {riskManagement.pnl_percentage >= 0 ? '+' : ''}
+                      {riskManagement.pnl_percentage || 0}%
+                    </span>
+                  </div>
+                  
+                  <div className="border-t pt-3 mt-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Risk per Trade:</span>
+                      <span className="font-medium text-blue-600">
+                        {riskManagement.risk_per_trade || '1.5%'}
+                      </span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center mt-2">
+                      <span className="text-gray-600">Max Risk Amount:</span>
+                      <span className="font-medium text-red-600">
+                        {riskManagement.max_risk_amount || '$3.00'}
+                      </span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center mt-2">
+                      <span className="text-gray-600">Account Health:</span>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        riskManagement.account_health === 'Excellent' ? 'bg-green-100 text-green-800' :
+                        riskManagement.account_health === 'Good' ? 'bg-blue-100 text-blue-800' :
+                        riskManagement.account_health === 'Caution' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {riskManagement.account_health || 'Healthy'}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
