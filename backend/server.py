@@ -1729,8 +1729,8 @@ async def initialize_system():
     ])
     
     print(f"📊 Final System Status:")
-    print(f"   - RL Agent: {'Restored' if rl_agent.epsilon < 1.0 else 'New'}")
-    print(f"   - Scalping RL Agent: {'Restored' if scalping_rl_agent.epsilon < 1.0 else 'New'}")
+    print(f"   - RL Agent: {'Trained' if rl_agent and len(rl_agent.memory) > 0 else 'New'}")
+    print(f"   - Scalping RL Agent: {'Trained' if scalping_rl_agent and len(scalping_rl_agent.memory) > 0 else 'New'}")
     print(f"   - ML Models: {final_models_count} active")
     print(f"   - Feature History: {len(feature_history)} records")
     print(f"   - Price History: {len(price_history)} symbols")
