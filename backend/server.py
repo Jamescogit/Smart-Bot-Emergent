@@ -47,9 +47,6 @@ class RealITickDataFeed:
         }
         
         print("🔗 iTick API initialized with demo access")
-import time
-from concurrent.futures import ThreadPoolExecutor
-import yfinance as yf
 
 # Add backend directory to path
 sys.path.append('/app/backend')
