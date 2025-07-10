@@ -1899,6 +1899,141 @@ async def update_market_data():
             print(f"Error in market data update: {e}")
             await asyncio.sleep(10)
 
+async def simulate_trade_from_signal(symbol: str = "XAUUSD"):
+    """Simulate a trade based on current scalping signal and train RL agent"""
+    try:
+        # Get current scalping signal
+        signal_response = await get_scalping_signal(symbol)
+        
+        if signal_response.action == "HOLD":
+            return None
+            
+        # Simulate trade execution
+        entry_price = signal_response.entry_price
+        stop_loss = signal_response.stop_loss
+        take_profit = signal_response.take_profit
+        confidence = signal_response.confidence
+        
+        # Simulate market movement (for training purposes)
+        # In production, this would be real market data
+        price_movement = np.random.normal(0, 0.001)  # Random price movement
+        exit_price = entry_price * (1 + price_movement)
+        
+        # Calculate trade outcome
+        if signal_response.action == "BUY":
+            pips_gained = (exit_price - entry_price) * (10000 if symbol in ['EURUSD', 'EURJPY', 'USDJPY'] else 10)
+            trade_profitable = exit_price > entry_price
+        else:  # SELL
+            pips_gained = (entry_price - exit_price) * (10000 if symbol in ['EURUSD', 'EURJPY', 'USDJPY'] else 10)
+            trade_profitable = exit_price < entry_price
+        
+        # Calculate dollar P&L
+        position_size = signal_response.position_size if hasattr(signal_response, 'position_size') else 0.1
+        pip_value = 0.1 if symbol == 'XAUUSD' else 0.0001 if symbol in ['EURUSD'] else 0.01
+        dollar_pnl = pips_gained * pip_value * position_size * 100000
+        
+        # Update account balance
+        update_account_balance(dollar_pnl)
+        
+        # Create enhanced trade record
+        enhanced_trade = {
+            "trade_id": f"sim_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{symbol}",
+            "timestamp": datetime.now().isoformat(),
+            "symbol": symbol,
+            "action": signal_response.action,
+            "entry_price": entry_price,
+            "exit_price": exit_price,
+            "pips": round(pips_gained, 1),
+            "profit_loss_pct": round((dollar_pnl / current_balance) * 100, 2),
+            "confidence": round(confidence * 100, 1),
+            "decision_factors": ", ".join(signal_response.reasons[:2]),  # Top 2 reasons
+            "trade_type": "Scalping",
+            "forecast_trend": "Up" if signal_response.action == "BUY" else "Down",
+            "news_sentiment": round(np.random.normal(0, 0.3), 3),  # Mock sentiment
+            "tweet_bias": np.random.choice(['Bullish', 'Neutral', 'Bearish']),
+            "bot_strategy": signal_response.strategy if hasattr(signal_response, 'strategy') else "Scalping Signal",
+            "ml_decision": f"{confidence*100:.0f}% Confidence",
+            "risk_level": "Low" if confidence > 0.7 else "Medium" if confidence > 0.5 else "High",
+            "exit_reason": "Take Profit" if trade_profitable else "Stop Loss",
+            "duration_minutes": np.random.randint(1, 5),  # Scalping duration
+            "slippage": round(np.random.uniform(0, 0.2), 1),
+            "commission": 0.1
+        }
+        
+        # Store in database
+        await db.enhanced_trades.insert_one(enhanced_trade)
+        
+        # Train RL agent with this trade
+        if scalping_rl_agent:
+            # Prepare state (simplified)
+            current_state = np.random.randn(15)  # Mock state
+            next_state = np.random.randn(15)     # Mock next state
+            
+            # Get action index (0=HOLD, 1=BUY, 2=SELL)
+            action_idx = 1 if signal_response.action == "BUY" else 2
+            
+            # Calculate reward using the enhanced reward function
+            reward = scalping_rl_agent.calculate_scalping_reward(
+                action_idx, entry_price, exit_price, symbol, position_size, enhanced_trade["duration_minutes"]
+            )
+            
+            # Store experience and potentially train
+            scalping_rl_agent.remember(current_state, action_idx, reward, next_state, True)
+            
+            # Train every 10 experiences
+            if len(scalping_rl_agent.memory) >= 10 and len(scalping_rl_agent.memory) % 10 == 0:
+                scalping_rl_agent.replay(batch_size=min(32, len(scalping_rl_agent.memory)))
+                print(f"🧠 RL Agent trained on {len(scalping_rl_agent.memory)} experiences")
+        
+        print(f"🎯 Trade Simulated: {signal_response.action} {symbol} | P&L: ${dollar_pnl:.2f} | Pips: {pips_gained:.1f}")
+        
+        return enhanced_trade
+        
+    except Exception as e:
+        print(f"❌ Error simulating trade: {e}")
+        return None
+
+async def continuous_learning_loop():
+    """Background task for continuous learning and trade simulation"""
+    learning_active = True
+    simulation_count = 0
+    
+    print("🚀 Starting continuous learning loop...")
+    
+    while learning_active:
+        try:
+            # Run learning cycle every 2 minutes
+            await asyncio.sleep(120)
+            
+            # Generate trades for different symbols
+            symbols_to_trade = ['XAUUSD', 'EURUSD', 'USDJPY']
+            
+            for symbol in symbols_to_trade:
+                # Simulate trade with 30% probability to avoid overtrading
+                if np.random.random() < 0.3:
+                    trade_result = await simulate_trade_from_signal(symbol)
+                    if trade_result:
+                        simulation_count += 1
+                        
+                        # Print learning progress every 10 trades
+                        if simulation_count % 10 == 0:
+                            print(f"📊 Learning Progress: {simulation_count} trades simulated")
+                            print(f"   - RL Agent Memory: {len(scalping_rl_agent.memory) if scalping_rl_agent else 0}")
+                            print(f"   - Current Balance: ${current_balance:.2f}")
+                            print(f"   - Epsilon: {scalping_rl_agent.epsilon:.3f}" if scalping_rl_agent else "N/A")
+            
+            # Save progress every hour (30 cycles)
+            if simulation_count > 0 and simulation_count % 30 == 0:
+                try:
+                    save_all_persistent_data()
+                    print(f"💾 Saved learning progress after {simulation_count} simulated trades")
+                except Exception as e:
+                    print(f"❌ Error saving progress: {e}")
+                    
+        except Exception as e:
+            print(f"❌ Error in continuous learning loop: {e}")
+            await asyncio.sleep(60)  # Wait 1 minute on error
+
 # API Routes
 @api_router.get("/")
 async def root():
