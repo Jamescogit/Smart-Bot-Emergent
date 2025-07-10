@@ -1472,7 +1472,6 @@ def check_correlation(symbol1: str, symbol2: str, data1: pd.DataFrame, data2: pd
     
     return combined.corr().iloc[0, 1]
 
-# Initialize global components
 async def initialize_system():
     """Initialize the trading system with persistent learning"""
     global rl_agent, ml_models, price_history, scalping_rl_agent, candlestick_history
@@ -1496,49 +1495,69 @@ async def initialize_system():
     else:
         print("♻️ Using restored Scalping RL agent from previous session")
     
-    # Initialize price history (only if not loaded from file)
+    # Initialize price history if empty
     if not price_history:
-        price_history = {}
-        for symbol in SYMBOLS:
-            price_history[symbol] = deque(maxlen=100)
+        price_history = {symbol: deque(maxlen=100) for symbol in SYMBOLS}
         print("🆕 Created new price history")
     else:
         print("♻️ Using restored price history from previous session")
     
-    # Initialize candlestick history
-    for symbol in SYMBOLS:
-        if symbol not in candlestick_history:
-            candlestick_history[symbol] = deque(maxlen=100)
-    
-    # Initialize ML models dictionary (only if not loaded)
+    # Initialize ML models dictionary if empty
     if not ml_models:
-        ml_models = {
-            'xgboost': None,
-            'catboost': None,
-            'prophet': None,
-            'scaler': None
-        }
+        ml_models = {}
         print("🆕 Created new ML models dictionary")
     else:
         print("♻️ Using restored ML models from previous session")
     
-    # Populate some sample trading data (only if no data exists)
+    # **AUTO-TRAINING CHECK AND EXECUTION**
+    models_active_count = sum([
+        ml_models.get('xgboost') is not None,
+        ml_models.get('catboost') is not None,
+        ml_models.get('prophet') is not None,
+        ml_models.get('tpot') is not None
+    ])
+    
+    feature_count = len(feature_history)
+    
+    print(f"📊 System Status Check:")
+    print(f"   - Models Active: {models_active_count}/4")
+    print(f"   - Feature History: {feature_count} records")
+    
+    # AUTO-TRAIN IF NEEDED
+    if models_active_count < 2 and feature_count >= 100:
+        print("🤖 AUTO-TRAINING TRIGGERED: Sufficient data, models not trained")
+        try:
+            # Force training
+            await train_models()
+            print("✅ Auto-training completed successfully")
+        except Exception as e:
+            print(f"❌ Auto-training failed: {e}")
+    elif models_active_count < 2:
+        print(f"⏳ AUTO-TRAINING PENDING: Need more data ({feature_count}/100 features)")
+    else:
+        print("✅ AUTO-TRAINING SKIPPED: Models already trained")
+    
+    # Check existing trades
     try:
         existing_trades = await db.trades.count_documents({})
-        if existing_trades == 0:
-            await populate_sample_data()
-            print("🆕 Generated sample trading data")
-        else:
-            print(f"♻️ Found {existing_trades} existing trades in database")
+        print(f"♻️ Found {existing_trades} existing trades in database")
     except Exception as e:
-        print(f"⚠️ Error checking existing trades: {e}")
-        await populate_sample_data()
+        print(f"Database connection issue: {e}")
     
     print("✅ Trading system initialized successfully with persistent learning!")
-    print("📊 System Status:")
+    
+    # Print final status
+    final_models_count = sum([
+        ml_models.get('xgboost') is not None,
+        ml_models.get('catboost') is not None,
+        ml_models.get('prophet') is not None,
+        ml_models.get('tpot') is not None
+    ])
+    
+    print(f"📊 Final System Status:")
     print(f"   - RL Agent: {'Restored' if rl_agent.epsilon < 1.0 else 'New'}")
     print(f"   - Scalping RL Agent: {'Restored' if scalping_rl_agent.epsilon < 1.0 else 'New'}")
-    print(f"   - ML Models: {len([k for k, v in ml_models.items() if v is not None])} active")
+    print(f"   - ML Models: {final_models_count} active")
     print(f"   - Feature History: {len(feature_history)} records")
     print(f"   - Price History: {len(price_history)} symbols")
     
