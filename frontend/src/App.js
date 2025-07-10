@@ -131,12 +131,20 @@ function App() {
   const fetchPerformanceMetrics = async () => {
     try {
       console.log('🔍 Fetching performance metrics from:', `${API}/performance-metrics`);
-      const response = await axios.get(`${API}/performance-metrics`);
-      console.log('✅ Performance metrics response:', response.data);
+      const response = await axios.get(`${API}/performance-metrics`, {
+        timeout: 10000,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      console.log('✅ Performance metrics response status:', response.status);
+      console.log('✅ Performance metrics response data:', response.data);
       setPerformanceMetrics(response.data);
     } catch (error) {
       console.error('❌ Error fetching performance metrics:', error);
-      console.error('❌ Error details:', error.response?.data || error.message);
+      console.error('❌ Error status:', error.response?.status);
+      console.error('❌ Error data:', error.response?.data);
+      console.error('❌ Error message:', error.message);
     }
   };
 
