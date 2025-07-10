@@ -58,6 +58,11 @@ function App() {
   const [lastSignalUpdate, setLastSignalUpdate] = useState(null);
   const [isLiveMode, setIsLiveMode] = useState(true);
   const [currentView, setCurrentView] = useState('dashboard'); // dashboard, trade-history, scalping
+  const [botReadiness, setBotReadiness] = useState({
+    is_ready: false,
+    status: '⏳ Still Learning',
+    readiness_score: 0
+  });
   
   const intervalRef = useRef(null);
   const trainingIntervalRef = useRef(null);
