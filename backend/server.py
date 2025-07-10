@@ -3045,6 +3045,133 @@ async def get_model_status():
         performance=float_performance
     )
 
+@api_router.get("/bot-readiness")
+async def get_bot_readiness():
+    """Calculate bot readiness score based on training, performance, and strategy criteria"""
+    try:
+        # Get enhanced analysis for strategy performance
+        trades_cursor = db.enhanced_trades.find().limit(1000)
+        trades = await trades_cursor.to_list(1000)
+        
+        # Initialize readiness criteria
+        models_trained = False
+        avg_pips_positive = False
+        top_strategy_good = False
+        readiness_score = 0
+        details = {}
+        
+        # 1. Check if models are trained
+        models_active_count = sum([
+            ml_models.get('xgboost') is not None,
+            ml_models.get('catboost') is not None,
+            ml_models.get('prophet') is not None,
+            ml_models.get('tpot') is not None
+        ])
+        
+        models_trained = models_active_count >= 2
+        if models_trained:
+            readiness_score += 33
+            details['models'] = f"✅ {models_active_count}/4 models trained"
+        else:
+            details['models'] = f"❌ {models_active_count}/4 models trained (need 2+)"
+        
+        # 2. Check average pips performance
+        if trades:
+            total_pips = sum(trade.get('pips', 0) for trade in trades)
+            avg_pips = total_pips / len(trades)
+            avg_pips_positive = avg_pips > 0
+            
+            if avg_pips_positive:
+                readiness_score += 33
+                details['performance'] = f"✅ Avg pips: +{avg_pips:.1f}"
+            else:
+                details['performance'] = f"❌ Avg pips: {avg_pips:.1f} (need positive)"
+        else:
+            details['performance'] = "❌ No trade data available"
+        
+        # 3. Check top strategy win rate
+        if trades:
+            # Analyze strategy performance
+            strategy_stats = {}
+            for trade in trades:
+                strategy = trade.get('bot_strategy', 'Unknown')
+                if strategy not in strategy_stats:
+                    strategy_stats[strategy] = {'trades': 0, 'wins': 0}
+                
+                strategy_stats[strategy]['trades'] += 1
+                if trade.get('profit_loss_pct', 0) > 0:
+                    strategy_stats[strategy]['wins'] += 1
+            
+            # Calculate win rates and find top strategy
+            for strategy, stats in strategy_stats.items():
+                stats['win_rate'] = (stats['wins'] / stats['trades']) * 100 if stats['trades'] > 0 else 0
+            
+            # Get top strategy by number of trades
+            if strategy_stats:
+                top_strategy = max(strategy_stats.items(), key=lambda x: x[1]['trades'])
+                top_strategy_name = top_strategy[0]
+                top_strategy_win_rate = top_strategy[1]['win_rate']
+                top_strategy_trades = top_strategy[1]['trades']
+                
+                top_strategy_good = top_strategy_win_rate > 50 and top_strategy_trades >= 5
+                
+                if top_strategy_good:
+                    readiness_score += 34
+                    details['strategy'] = f"✅ {top_strategy_name}: {top_strategy_win_rate:.1f}% win rate"
+                else:
+                    details['strategy'] = f"❌ {top_strategy_name}: {top_strategy_win_rate:.1f}% win rate (need >50%)"
+            else:
+                details['strategy'] = "❌ No strategy data available"
+        else:
+            details['strategy'] = "❌ No strategy data available"
+        
+        # Determine readiness status
+        is_ready = models_trained and avg_pips_positive and top_strategy_good
+        
+        if is_ready:
+            status = "✅ Bot Ready to Trade"
+            status_color = "green"
+        else:
+            status = "⏳ Still Learning"
+            status_color = "yellow"
+        
+        # Additional recommendations
+        recommendations = []
+        if not models_trained:
+            recommendations.append("Train more ML models (need at least 2 active)")
+        if not avg_pips_positive:
+            recommendations.append("Improve trading performance (need positive average pips)")
+        if not top_strategy_good:
+            recommendations.append("Develop better strategies (need >50% win rate)")
+        
+        return {
+            "is_ready": is_ready,
+            "status": status,
+            "status_color": status_color,
+            "readiness_score": readiness_score,
+            "criteria": {
+                "models_trained": models_trained,
+                "avg_pips_positive": avg_pips_positive,
+                "top_strategy_good": top_strategy_good
+            },
+            "details": details,
+            "recommendations": recommendations,
+            "last_check": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        print(f"❌ Error calculating bot readiness: {e}")
+        return {
+            "is_ready": False,
+            "status": "⚠️ Error calculating readiness",
+            "status_color": "red",
+            "readiness_score": 0,
+            "criteria": {},
+            "details": {"error": str(e)},
+            "recommendations": ["Check system health"],
+            "last_check": datetime.now().isoformat()
+        }
+
 @api_router.get("/enhanced-trade-analysis")
 async def get_enhanced_trade_analysis():
     """Get enhanced trade analysis with profit factor, strategy performance, and weak strategy detection"""
