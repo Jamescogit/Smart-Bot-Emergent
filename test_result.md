@@ -105,10 +105,17 @@
 user_problem_statement: |
   User requested a sophisticated trading bot application with the following requirements:
   1. EODHD_API_KEY = "686e628db5f664.24674585" and NEWS_API_KEY = "7ed385a17ef14753accdadf13b8bffe5"
-  2. Candle charts refreshing every 30 seconds (current chart is unclear)
-  3. Main focus is scalping only - RL bot should train on scalping
-  4. Integrate yfinance for better data handling
-  5. Real-time ML Training Visualization with live training progress, win/loss rates, and pips won/lost during mock trades
+  2. TWELVE_DATA_API_KEY = "fa6ac99ee2e24f1ab4812ab16af92caf" for real-time market data
+  3. Real-time ML Training Visualization with live training progress, win/loss rates, and pips won/lost during mock trades
+  4. Enhanced AI optimization with:
+     - Continuous learning loop for autonomous trading
+     - Enhanced reward function with currency-specific optimization
+     - Strategy learning and curriculum learning
+     - Multi-timeframe analysis
+     - Real-time trading status monitoring
+  5. Fix fake training behavior and ensure mock trades are happening
+  6. Bot should make trading decisions every 2 minutes autonomously
+  7. Rate limiting for Twelve Data API (8 calls per minute, 800 per day)
 
 backend:
   - task: "yfinance Integration"
