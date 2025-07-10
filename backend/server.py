@@ -2357,6 +2357,170 @@ def update_account_balance(pnl):
     
     return current_balance
 
+async def enhanced_simulate_trade(symbol: str):
+    """Enhanced trade simulation with ATR-based TP/SL, decision reasoning, and pip-based rewards"""
+    try:
+        print(f"🔍 Enhanced trade analysis for {symbol}...")
+        
+        # Get current market data and technical indicators
+        market_data = await fetch_live_data(symbol)
+        if not market_data:
+            print(f"❌ No market data available for {symbol}")
+            return None
+        
+        # Get technical indicators for decision making
+        historical_data = await fetch_historical_data(symbol)
+        if historical_data.empty:
+            print(f"❌ No historical data for {symbol}")
+            return None
+        
+        indicators = calculate_technical_indicators(historical_data)
+        
+        # Calculate ATR for dynamic TP/SL
+        atr_value = indicators.get('ATR', 0.001)  # Default ATR if not available
+        
+        # Enhanced signal generation with reasoning
+        signal_response = await get_enhanced_scalping_signal(symbol, market_data, indicators, atr_value)
+        
+        if signal_response.action == "HOLD":
+            print(f"⏸️ {symbol}: Signal suggests HOLD - {signal_response.reasoning}")
+            return None
+            
+        # Enhanced trade execution simulation
+        entry_price = signal_response.entry_price
+        confidence = signal_response.confidence
+        
+        # ATR-based TP/SL calculation
+        atr_multiplier_tp = 2.0  # Take profit at 2x ATR
+        atr_multiplier_sl = 1.0  # Stop loss at 1x ATR
+        
+        if signal_response.action == "BUY":
+            take_profit = entry_price + (atr_value * atr_multiplier_tp)
+            stop_loss = entry_price - (atr_value * atr_multiplier_sl)
+        else:  # SELL
+            take_profit = entry_price - (atr_value * atr_multiplier_tp)
+            stop_loss = entry_price + (atr_value * atr_multiplier_sl)
+        
+        # Simulate market movement and trade outcome
+        volatility_factor = min(0.005, atr_value * 2)  # Cap volatility
+        price_movement = np.random.normal(0, volatility_factor)
+        
+        # Bias movement based on signal confidence
+        if signal_response.action == "BUY" and confidence > 0.6:
+            price_movement += volatility_factor * 0.3  # Slight upward bias for confident buy
+        elif signal_response.action == "SELL" and confidence > 0.6:
+            price_movement -= volatility_factor * 0.3  # Slight downward bias for confident sell
+        
+        exit_price = entry_price * (1 + price_movement)
+        
+        # Determine exit reason
+        exit_reason = "Market Close"  # Default
+        if signal_response.action == "BUY":
+            if exit_price >= take_profit:
+                exit_price = take_profit
+                exit_reason = "Take Profit"
+            elif exit_price <= stop_loss:
+                exit_price = stop_loss
+                exit_reason = "Stop Loss"
+        else:  # SELL
+            if exit_price <= take_profit:
+                exit_price = take_profit
+                exit_reason = "Take Profit"
+            elif exit_price >= stop_loss:
+                exit_price = stop_loss
+                exit_reason = "Stop Loss"
+        
+        # Calculate pips gained/lost
+        if signal_response.action == "BUY":
+            pips_gained = (exit_price - entry_price) * (10000 if symbol in ['EURUSD', 'EURJPY', 'USDJPY', 'GBPUSD'] else 10)
+        else:  # SELL
+            pips_gained = (entry_price - exit_price) * (10000 if symbol in ['EURUSD', 'EURJPY', 'USDJPY', 'GBPUSD'] else 10)
+        
+        # Calculate position size and dollar P&L
+        position_size = calculate_position_size(symbol, atr_value, current_balance)
+        pip_value = get_pip_value(symbol)
+        dollar_pnl = pips_gained * pip_value * position_size * 100000
+        
+        # Update account balance
+        update_account_balance(dollar_pnl)
+        
+        # Create enhanced trade record with full reasoning
+        trade_duration = np.random.randint(30, 300)  # 30 seconds to 5 minutes
+        
+        enhanced_trade = {
+            "trade_id": f"enhanced_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{symbol}",
+            "timestamp": datetime.now().isoformat(),
+            "symbol": symbol,
+            "action": signal_response.action,
+            "entry_price": round(entry_price, 5),
+            "exit_price": round(exit_price, 5),
+            "take_profit": round(take_profit, 5),
+            "stop_loss": round(stop_loss, 5),
+            "pips_gained": round(pips_gained, 2),
+            "dollar_pnl": round(dollar_pnl, 2),
+            "confidence": round(confidence * 100, 1),
+            "decision_reasoning": signal_response.reasoning,
+            "exit_reason": exit_reason,
+            "duration_seconds": trade_duration,
+            "atr_value": round(atr_value * 10000, 2),  # ATR in pips
+            "position_size": position_size,
+            "strategy": signal_response.strategy,
+            "risk_reward_ratio": round(abs((take_profit - entry_price) / (entry_price - stop_loss)), 2) if signal_response.action == "BUY" else round(abs((entry_price - take_profit) / (stop_loss - entry_price)), 2),
+            "market_conditions": {
+                "rsi": indicators.get('RSI', 50),
+                "macd": indicators.get('MACD', 0),
+                "trend": "Bullish" if signal_response.action == "BUY" else "Bearish"
+            }
+        }
+        
+        # Store in database
+        try:
+            await db.enhanced_trades.insert_one(enhanced_trade.copy())
+        except Exception as db_error:
+            print(f"Database warning: {db_error}")
+        
+        # Train RL agent with enhanced reward calculation
+        if scalping_rl_agent:
+            # Get candlestick data for state preparation
+            symbol_candlesticks = candlestick_history.get(symbol, [])
+            
+            # Prepare enhanced state
+            current_state = scalping_rl_agent.prepare_enhanced_scalping_state(symbol, symbol_candlesticks)
+            next_state = scalping_rl_agent.prepare_enhanced_scalping_state(symbol, symbol_candlesticks)
+            
+            # Get action index
+            action_idx = 1 if signal_response.action == "BUY" else 2
+            
+            # Enhanced reward calculation based on pips, exit reason, and confidence
+            reward = calculate_enhanced_reward(
+                pips_gained, exit_reason, confidence, symbol, trade_duration, atr_value
+            )
+            
+            # Update strategy performance
+            strategy = signal_response.strategy
+            scalping_rl_agent.update_strategy_performance(strategy, symbol, pips_gained)
+            
+            # Store experience
+            scalping_rl_agent.remember(current_state, action_idx, reward, next_state, True)
+            
+            # Check curriculum advancement
+            scalping_rl_agent.advance_curriculum()
+        
+        # Log detailed trade result
+        profit_emoji = "💰" if pips_gained > 0 else "📉"
+        print(f"{profit_emoji} Enhanced Trade Completed:")
+        print(f"   - {signal_response.action} {symbol} @ {entry_price:.5f}")
+        print(f"   - Exit: {exit_price:.5f} ({exit_reason})")
+        print(f"   - Pips: {pips_gained:+.2f} | P&L: ${dollar_pnl:+.2f}")
+        print(f"   - Reasoning: {signal_response.reasoning}")
+        print(f"   - ATR: {atr_value*10000:.1f} pips | R:R = {enhanced_trade['risk_reward_ratio']}")
+        
+        return enhanced_trade
+        
+    except Exception as e:
+        print(f"❌ Error in enhanced trade simulation: {e}")
+        return None
+
 async def simulate_trade_from_signal(symbol: str = "XAUUSD"):
     """Simulate a trade based on current scalping signal and train RL agent"""
     try:
