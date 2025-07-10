@@ -2794,10 +2794,84 @@ async def train_models():
         training_data = await training_data_cursor.to_list(300)
         
         if len(training_data) < 100:
-            # Generate training data if not enough
-            await populate_sample_data()
-            training_data_cursor = db.training_data.find().limit(300)
-            training_data = await training_data_cursor.to_list(300)
+            # Generate comprehensive training data if not enough
+            print("📊 Generating comprehensive training data for all models...")
+            
+            # Generate training data for each model type
+            training_data = []
+            
+            # Create 500 comprehensive training samples
+            for i in range(500):
+                # Generate realistic market data
+                base_price = 2600 + np.random.normal(0, 50)  # XAUUSD around 2600
+                
+                # Market data with realistic patterns
+                market_data = {
+                    'symbol': 'XAUUSD',
+                    'price': base_price + np.random.normal(0, 5),
+                    'change': np.random.normal(0, 0.002),  # Realistic price changes
+                    'volume': 1000000 + np.random.normal(0, 200000),
+                    'timestamp': (datetime.now() - timedelta(hours=500-i)).isoformat()
+                }
+                
+                # Technical indicators
+                indicators = {
+                    'rsi': 30 + np.random.random() * 40,  # RSI between 30-70
+                    'macd': np.random.normal(0, 2),
+                    'ema_short': base_price + np.random.normal(0, 3),
+                    'ema_long': base_price + np.random.normal(0, 5),
+                    'bb_upper': base_price + 10 + np.random.normal(0, 2),
+                    'bb_lower': base_price - 10 + np.random.normal(0, 2),
+                    'volume_sma': 1000000 + np.random.normal(0, 100000),
+                    'atr': 5 + np.random.random() * 10
+                }
+                
+                # News sentiment (for CatBoost)
+                sentiment_score = np.random.normal(0, 0.3)  # Between -1 and 1
+                
+                # Historical price data (for Prophet)
+                historical_prices = [base_price + np.random.normal(0, 3) for _ in range(20)]
+                
+                # Pattern data (for TPOT)
+                pattern_features = np.random.randn(15).tolist()
+                
+                # Trading outcome (target variable)
+                # 0: HOLD, 1: BUY, 2: SELL
+                if sentiment_score > 0.1 and indicators['rsi'] < 40:
+                    action = 1  # BUY
+                elif sentiment_score < -0.1 and indicators['rsi'] > 60:
+                    action = 2  # SELL
+                else:
+                    action = 0  # HOLD
+                
+                training_sample = {
+                    'market_data': market_data,
+                    'indicators': indicators,
+                    'news_sentiment': sentiment_score,
+                    'historical_prices': historical_prices,
+                    'pattern_features': pattern_features,
+                    'target_action': action,
+                    'profit_outcome': np.random.normal(5 if action != 0 else 0, 10),  # Pips gained/lost
+                    'event_flag': np.random.choice([0, 1], p=[0.8, 0.2])  # Economic events
+                }
+                
+                training_data.append(training_sample)
+            
+            # Store in database for future use
+            if training_data:
+                await db.training_data.delete_many({})  # Clear old data
+                await db.training_data.insert_many(training_data)
+                print(f"✅ Generated and stored {len(training_data)} training samples")
+            
+            # Also populate feature_history for basic training
+            for sample in training_data[:100]:
+                features = prepare_ml_features(
+                    sample['market_data'], 
+                    sample['indicators'], 
+                    sample['news_sentiment'], 
+                    sample['event_flag']
+                )
+                feature_history.append(features)
         
         # Train all models using ensemble ML engine
         training_results = await ensemble_ml_engine.train_all_models(training_data, "XAUUSD")
