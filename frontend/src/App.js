@@ -139,6 +139,26 @@ function App() {
     }
   };
 
+  // Fetch bot readiness score
+  const fetchBotReadiness = async () => {
+    try {
+      console.log('🎯 Fetching bot readiness score...');
+      const response = await axios.get(`${API}/bot-readiness`, {
+        timeout: 10000,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      console.log('✅ Bot readiness response:', response.data);
+      setBotReadiness(response.data);
+    } catch (error) {
+      console.error('❌ Error fetching bot readiness:', error);
+      setBotReadiness({
+        is_ready: false,
+        status: '⚠️ Error checking readiness',
+        readiness_score: 0
+      });
+    }
+  };
+
   // Auto-training check function
   const fetchAutoTrainingCheck = async () => {
     try {
