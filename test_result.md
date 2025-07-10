@@ -120,75 +120,93 @@ user_problem_statement: |
 backend:
   - task: "Twelve Data API Integration"
     implemented: true
-    working: true
+    working: false
     file: "/app/backend/server.py"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: true
         agent: "main"
         comment: "Successfully integrated Twelve Data API with rate limiting (8 calls/minute), caching, and real-time market data fetching. Live data confirmed working for XAUUSD, EURUSD, EURJPY, USDJPY, GBPUSD."
+      - working: false
+        agent: "testing"
+        comment: "CRITICAL: /api/market-data/{symbol} endpoint returns 500 Internal Server Error due to ObjectId serialization issues. Only USDJPY and GBPUSD work, XAUUSD/EURUSD/EURJPY fail. Rate limiting logic works but API calls fail before reaching limit."
         
   - task: "Continuous Learning Loop"
-    implemented: true
-    working: true
+    implemented: false
+    working: false
     file: "/app/backend/server.py"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: true
         agent: "main"
         comment: "Implemented enhanced continuous learning loop that makes trading decisions every 2 minutes. Started in startup_event with proper logging."
+      - working: false
+        agent: "testing"
+        comment: "MISSING ENDPOINTS: /api/learning-loop-status returns 404 Not Found. Cannot verify continuous learning loop is active or making decisions every 2 minutes. No API endpoint to monitor autonomous trading decisions."
         
   - task: "Enhanced Reward Function"
-    implemented: true
-    working: true
+    implemented: false
+    working: false
     file: "/app/backend/server.py"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: true
         agent: "main"
         comment: "Added currency-specific reward function with EUR/USD false breakout penalties, XAUUSD bonuses, and enhanced scalping optimization."
+      - working: false
+        agent: "testing"
+        comment: "MISSING ENDPOINTS: /api/reward-function-status returns 404 Not Found. Cannot verify enhanced reward function with currency-specific optimization is working. Implementation exists in code but no API to monitor it."
         
   - task: "Strategy Learning & Curriculum Learning"
-    implemented: true
-    working: true
+    implemented: false
+    working: false
     file: "/app/backend/server.py"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: true
         agent: "main"
         comment: "Added strategy performance tracking and curriculum learning with 4 stages: Gold Focus -> JPY Pairs -> EUR/USD Challenge -> Full Market."
+      - working: false
+        agent: "testing"
+        comment: "MISSING ENDPOINTS: /api/strategy-learning-status returns 404 Not Found. Cannot verify curriculum learning progression or strategy performance tracking. Implementation exists in ScalpingRLAgent class but no API endpoint to monitor progress."
         
   - task: "Real-time Trading Status API"
     implemented: true
     working: false
     file: "/app/backend/server.py"
-    stuck_count: 1
+    stuck_count: 2
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: false
         agent: "main"
         comment: "Implemented /api/bot-trading-status endpoint but getting ObjectId serialization errors. Need to fix JSON serialization."
+      - working: false
+        agent: "testing"
+        comment: "CRITICAL: /api/bot-trading-status returns 500 Internal Server Error due to ObjectId serialization. MongoDB documents with ObjectId fields cannot be serialized to JSON. Also /api/scalping-rl-performance returns 500 error."
         
   - task: "Multi-timeframe Analysis"
-    implemented: true
-    working: true
+    implemented: false
+    working: false
     file: "/app/backend/server.py"
-    stuck_count: 0
+    stuck_count: 1
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: true
         agent: "main"
         comment: "Added prepare_enhanced_scalping_state with 1m, 3m, 5m, 15m momentum analysis and session-based features."
+      - working: false
+        agent: "testing"
+        comment: "MISSING ENDPOINTS: /api/multi-timeframe-analysis/{symbol} returns 404 Not Found. Cannot verify enhanced state preparation with multi-timeframe analysis. Implementation exists in prepare_enhanced_scalping_state method but no API endpoint to test it."
 
 frontend:
   - task: "Candlestick Chart Component"
