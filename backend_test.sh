@@ -7,7 +7,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Base URL
-BASE_URL="https://19a72beb-93c1-4cb9-8178-1677fcc62173.preview.emergentagent.com"
+BASE_URL="https://70f00b2b-8b2d-489d-9db9-864872c61a38.preview.emergentagent.com"
 API_URL="${BASE_URL}/api"
 
 # Test symbols
