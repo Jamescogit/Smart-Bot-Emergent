@@ -476,6 +476,7 @@ function App() {
     console.log('🚀 Dashboard loading - starting auto-training check...');
     fetchAutoTrainingCheck();  // Check and auto-train if needed
     fetchBotReadiness();       // Check bot readiness
+    fetchRiskManagement();     // Fetch risk management data
     fetchMarketData();
     fetchTechnicalIndicators(selectedSymbol);
     fetchTradingSignals(selectedSymbol);
