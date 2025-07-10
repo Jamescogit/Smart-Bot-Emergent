@@ -145,6 +145,29 @@ function App() {
     }
   };
 
+  // Fetch account/risk management status
+  const fetchRiskManagement = async () => {
+    try {
+      console.log('💰 Fetching risk management status...');
+      const response = await axios.get(`${API}/account-status`, {
+        timeout: 10000,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      console.log('✅ Risk management response:', response.data);
+      setRiskManagement({
+        starting_balance: response.data.starting_balance || 200,
+        current_balance: response.data.current_balance || 200,
+        risk_per_trade: `${response.data.risk_per_trade_pct || 1.5}%`,
+        max_risk_amount: `$${response.data.max_risk_per_trade || 3.00}`,
+        account_health: response.data.account_health || 'Healthy',
+        total_pnl: response.data.total_pnl || 0,
+        pnl_percentage: response.data.pnl_percentage || 0
+      });
+    } catch (error) {
+      console.error('❌ Error fetching risk management:', error);
+    }
+  };
+
   // Fetch bot readiness score
   const fetchBotReadiness = async () => {
     try {
