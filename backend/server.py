@@ -2707,6 +2707,98 @@ async def get_trade_analysis():
             "summary": {"total_trades": 0, "avg_profit": 0, "avg_pips": 0}
         }
 
+@api_router.get("/enhanced-bot-health")
+async def get_enhanced_bot_health():
+    """Get enhanced bot health with RL agent metrics and learning progress"""
+    try:
+        # Basic bot health
+        models_active = {
+            'xgboost': ml_models.get('xgboost') is not None,
+            'catboost': ml_models.get('catboost') is not None,
+            'prophet': ml_models.get('prophet') is not None,
+            'tpot': ml_models.get('tpot') is not None
+        }
+        
+        total_active = sum(models_active.values())
+        health_percentage = (total_active / 4) * 100
+        
+        # RL Agent metrics
+        rl_metrics = {}
+        if scalping_rl_agent:
+            # Calculate recent performance
+            recent_trades = min(10, scalping_rl_agent.trades_made)
+            recent_wins = min(scalping_rl_agent.winning_trades, recent_trades)
+            recent_win_rate = (recent_wins / recent_trades) * 100 if recent_trades > 0 else 0
+            
+            # Calculate last reward (simulated based on performance)
+            if scalping_rl_agent.trades_made > 0:
+                last_reward = 2.5 if scalping_rl_agent.current_streak > 0 else -1.2
+            else:
+                last_reward = 0.0
+            
+            # Epsilon decay progress (how much the bot has learned)
+            epsilon_progress = ((1.0 - scalping_rl_agent.epsilon) / (1.0 - scalping_rl_agent.epsilon_min)) * 100
+            epsilon_progress = min(100, max(0, epsilon_progress))
+            
+            rl_metrics = {
+                'total_trades': scalping_rl_agent.trades_made,
+                'winning_trades': scalping_rl_agent.winning_trades,
+                'current_streak': scalping_rl_agent.current_streak,
+                'total_pips': round(scalping_rl_agent.total_pips, 1),
+                'epsilon': round(scalping_rl_agent.epsilon, 3),
+                'epsilon_progress': round(epsilon_progress, 1),
+                'last_reward': round(last_reward, 1),
+                'memory_size': len(scalping_rl_agent.memory),
+                'learning_phase': 'Exploring' if scalping_rl_agent.epsilon > 0.3 else 'Exploiting' if scalping_rl_agent.epsilon > 0.1 else 'Expert',
+                'confidence_level': round((1 - scalping_rl_agent.epsilon) * 100, 1)
+            }
+        
+        # Account health metrics
+        account_health = {
+            'current_balance': round(current_balance, 2),
+            'starting_balance': STARTING_BALANCE,
+            'balance_change_pct': round(((current_balance - STARTING_BALANCE) / STARTING_BALANCE) * 100, 2),
+            'risk_per_trade': f"{RISK_PER_TRADE_PCT}%",
+            'max_risk_amount': f"${MAX_RISK_PER_TRADE:.2f}",
+            'health_status': 'Excellent' if current_balance > STARTING_BALANCE * 1.1 else 
+                           'Good' if current_balance > STARTING_BALANCE * 0.95 else 
+                           'Caution' if current_balance > STARTING_BALANCE * 0.8 else 'Critical'
+        }
+        
+        # Learning progress indicators
+        learning_progress = {
+            'feature_history_size': len(feature_history),
+            'models_trained': sum(models_active.values()),
+            'data_quality': 'Excellent' if len(feature_history) > 500 else 
+                          'Good' if len(feature_history) > 200 else 
+                          'Building' if len(feature_history) > 50 else 'Insufficient',
+            'training_stability': 'Stable' if total_active >= 2 else 'Training'
+        }
+        
+        return {
+            "health_percentage": health_percentage,
+            "status": "Excellent" if health_percentage >= 75 else "Good" if health_percentage >= 50 else "Poor",
+            "models_active": models_active,
+            "total_active_models": total_active,
+            "rl_agent_metrics": rl_metrics,
+            "account_health": account_health,
+            "learning_progress": learning_progress,
+            "last_update": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        print(f"❌ Error getting enhanced bot health: {e}")
+        return {
+            "health_percentage": 0,
+            "status": "Error",
+            "models_active": {},
+            "total_active_models": 0,
+            "rl_agent_metrics": {},
+            "account_health": {},
+            "learning_progress": {},
+            "error": str(e)
+        }
+
 @api_router.get("/bot-health")
 async def get_bot_health():
     """Get bot health metrics including RL agent status"""
