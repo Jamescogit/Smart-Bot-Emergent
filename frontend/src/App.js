@@ -379,9 +379,10 @@ function App() {
         fetchPerformanceMetrics();
         fetchModelStatus();
         
-        // Fetch scalping data
+        // Fetch scalping data with timestamp tracking
         fetchScalpingSignals(selectedSymbol);
         fetchScalpingRLPerformance();
+        setLastSignalUpdate(new Date().toLocaleTimeString());
         
         // Fetch training data if training is active
         if (trainingStatus.is_training) {
