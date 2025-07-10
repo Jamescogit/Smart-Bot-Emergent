@@ -2748,6 +2748,71 @@ async def get_model_status():
             performance=float_performance
         )
 
+@api_router.post("/auto-train-check")
+async def auto_train_check():
+    """Automatically check if training is needed and train models if necessary"""
+    try:
+        # Check if models are already trained
+        models_active = {
+            'xgboost': ml_models.get('xgboost') is not None,
+            'catboost': ml_models.get('catboost') is not None,
+            'prophet': ml_models.get('prophet') is not None,
+            'tpot': ml_models.get('tpot') is not None
+        }
+        
+        models_trained_count = sum(models_active.values())
+        feature_count = len(feature_history)
+        
+        # Determine training status
+        if models_trained_count >= 2:
+            last_trained = model_performance.get('last_trained', 'Unknown')
+            return {
+                "training_needed": False,
+                "status": "completed",
+                "message": f"Training completed at: {last_trained}",
+                "models_active": models_active,
+                "models_trained": models_trained_count,
+                "feature_count": feature_count
+            }
+        elif feature_count < 100:
+            return {
+                "training_needed": False,
+                "status": "waiting",
+                "message": f"Waiting for more data to train (have {feature_count}/100 features)",
+                "models_active": models_active,
+                "models_trained": models_trained_count,
+                "feature_count": feature_count
+            }
+        else:
+            # Auto-train the models
+            print("🤖 Auto-training triggered: Sufficient data available, models not trained")
+            training_result = await train_models()
+            
+            return {
+                "training_needed": True,
+                "status": "auto_trained",
+                "message": f"Auto-training completed at: {datetime.now().isoformat()}",
+                "models_active": {
+                    'xgboost': True,
+                    'catboost': True,
+                    'prophet': False,
+                    'tpot': False
+                },
+                "models_trained": training_result.get('models_trained', 0),
+                "feature_count": feature_count,
+                "training_result": training_result
+            }
+            
+    except Exception as e:
+        return {
+            "training_needed": False,
+            "status": "error",
+            "message": f"Auto-training check failed: {str(e)}",
+            "models_active": {},
+            "models_trained": 0,
+            "feature_count": 0
+        }
+
 @api_router.post("/train-models")
 async def train_models():
     """Train all specialized ML models with real-time simulation"""
