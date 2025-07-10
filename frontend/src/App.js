@@ -426,6 +426,7 @@ function App() {
   useEffect(() => {
     console.log('🚀 Dashboard loading - starting auto-training check...');
     fetchAutoTrainingCheck();  // Check and auto-train if needed
+    fetchBotReadiness();       // Check bot readiness
     fetchMarketData();
     fetchTechnicalIndicators(selectedSymbol);
     fetchTradingSignals(selectedSymbol);
@@ -436,9 +437,10 @@ function App() {
     fetchTrainingMetrics();
     fetchModelComparison();
     
-    // Fetch scalping data
+    // Fetch scalping data with timestamp tracking
     fetchScalpingSignals(selectedSymbol);
     fetchScalpingRLPerformance();
+    setLastSignalUpdate(new Date().toLocaleTimeString());
   }, [selectedSymbol]);
 
   // Cleanup intervals
