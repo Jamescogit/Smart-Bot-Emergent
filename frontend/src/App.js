@@ -563,37 +563,43 @@ function App() {
           <div>
             {/* Training Status Panel */}
             <div className="mb-6">
-              <div className={`bg-white rounded-lg shadow p-4 border-l-4 ${
-                autoTrainingStatus.status === 'completed' || autoTrainingStatus.status === 'auto_trained' 
-                  ? 'border-green-500' 
-                  : autoTrainingStatus.status === 'waiting' 
-                    ? 'border-yellow-500' 
-                    : 'border-blue-500'
-              }`}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">🤖 AI Training Status</h3>
-                    <p className={`text-sm ${
-                      autoTrainingStatus.status === 'completed' || autoTrainingStatus.status === 'auto_trained' 
-                        ? 'text-green-600' 
-                        : autoTrainingStatus.status === 'waiting' 
-                          ? 'text-yellow-600' 
-                          : 'text-blue-600'
-                    }`}>
-                      {autoTrainingStatus.message}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Models Active: {autoTrainingStatus.models_trained || 0}/4 | 
-                      Features: {autoTrainingStatus.feature_count || 0}
-                    </p>
-                  </div>
-                  <div className={`p-3 rounded-full ${
+              <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">🤖 AI Training Status</h3>
+                  <p className={`text-sm ${
                     autoTrainingStatus.status === 'completed' || autoTrainingStatus.status === 'auto_trained' 
-                      ? 'bg-green-100' 
+                      ? 'text-green-600' 
                       : autoTrainingStatus.status === 'waiting' 
-                        ? 'bg-yellow-100' 
-                        : 'bg-blue-100'
+                        ? 'text-yellow-600' 
+                        : autoTrainingStatus.status === 'auto_training'
+                          ? 'text-blue-600'
+                          : 'text-blue-600'
                   }`}>
+                    {autoTrainingStatus.status === 'auto_training' 
+                      ? '⏳ Training models...' 
+                      : autoTrainingStatus.message}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Models Active: {autoTrainingStatus.models_trained || 0}/4 | 
+                    Features: {autoTrainingStatus.feature_count || 0}
+                  </p>
+                  {autoTrainingStatus.status === 'auto_trained' && (
+                    <p className="text-xs text-green-600 mt-1 font-medium">
+                      ✅ Models automatically trained and loaded!
+                    </p>
+                  )}
+                </div>
+                <div className={`p-3 rounded-full ${
+                  autoTrainingStatus.status === 'completed' || autoTrainingStatus.status === 'auto_trained' 
+                    ? 'bg-green-100' 
+                    : autoTrainingStatus.status === 'waiting' 
+                      ? 'bg-yellow-100' 
+                      : 'bg-blue-100'
+                }`}>
+                  {autoTrainingStatus.status === 'auto_training' ? (
+                    <div className="animate-spin w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+                  ) : (
                     <Brain className={`w-6 h-6 ${
                       autoTrainingStatus.status === 'completed' || autoTrainingStatus.status === 'auto_trained' 
                         ? 'text-green-600' 
@@ -601,9 +607,10 @@ function App() {
                           ? 'text-yellow-600' 
                           : 'text-blue-600'
                     }`} />
-                  </div>
+                  )}
                 </div>
               </div>
+            </div>
             </div>
 
             {/* Statistics Cards Row - Scalping Focused */}
