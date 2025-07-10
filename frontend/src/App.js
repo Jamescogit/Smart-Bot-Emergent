@@ -63,6 +63,12 @@ function App() {
     status: '⏳ Still Learning',
     readiness_score: 0
   });
+  const [riskManagement, setRiskManagement] = useState({
+    starting_balance: 200,
+    current_balance: 200,
+    risk_per_trade: '1.5%',
+    max_risk_amount: '$3.00'
+  });
   
   const intervalRef = useRef(null);
   const trainingIntervalRef = useRef(null);
