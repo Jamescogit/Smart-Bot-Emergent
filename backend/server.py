@@ -52,9 +52,46 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
 # Constants
-SYMBOLS = ['XAUUSD', 'EURUSD', 'EURJPY', 'USDJPY', 'NASDAQ']
+SYMBOLS = ['XAUUSD', 'EURUSD', 'EURJPY', 'USDJPY', 'GBPUSD']  # Updated for Twelve Data
 EODHD_API_KEY = os.environ.get('EODHD_API_KEY')
 NEWS_API_KEY = os.environ.get('NEWS_API_KEY')
+TWELVE_DATA_API_KEY = os.environ.get('TWELVE_DATA_API_KEY')
+
+# Rate limiting for Twelve Data API (8 calls per minute)
+api_call_times = deque(maxlen=8)  # Track last 8 API calls
+API_RATE_LIMIT = 8  # 8 calls per minute
+RATE_LIMIT_WINDOW = 60  # 1 minute
+
+# Cache for market data to reduce API calls
+market_data_cache = {}
+CACHE_DURATION = 30  # Cache data for 30 seconds
+
+def can_make_api_call():
+    """Check if we can make an API call within rate limits"""
+    now = time.time()
+    
+    # Remove calls older than 1 minute
+    while api_call_times and now - api_call_times[0] > RATE_LIMIT_WINDOW:
+        api_call_times.popleft()
+    
+    # Check if we're under the limit
+    return len(api_call_times) < API_RATE_LIMIT
+
+def record_api_call():
+    """Record that we made an API call"""
+    api_call_times.append(time.time())
+
+def get_cached_data(symbol):
+    """Get cached market data if available and fresh"""
+    if symbol in market_data_cache:
+        cached_data, timestamp = market_data_cache[symbol]
+        if time.time() - timestamp < CACHE_DURATION:
+            return cached_data
+    return None
+
+def cache_market_data(symbol, data):
+    """Cache market data with timestamp"""
+    market_data_cache[symbol] = (data, time.time())
 
 import os
 import pickle
