@@ -1895,22 +1895,74 @@ async def get_scalping_signal(symbol: str):
                 timeframe="1m"
             )
         
-        # Basic scalping logic
-        current_price = recent_candles[-1]['close']
-        prev_price = recent_candles[-2]['close']
-        
-        # Calculate short-term momentum
-        momentum = (current_price - prev_price) / prev_price
-        
-        # Calculate volatility
+        # Calculate comprehensive technical indicators for detailed reasoning
+        closes = [candle['close'] for candle in recent_candles]
         highs = [candle['high'] for candle in recent_candles]
         lows = [candle['low'] for candle in recent_candles]
+        volumes = [candle['volume'] for candle in recent_candles]
+        
+        # Calculate technical indicators
+        current_price = closes[-1]
+        prev_price = closes[-2] if len(closes) >= 2 else current_price
+        
+        # 1. RSI calculation (simplified)
+        price_changes = [closes[i] - closes[i-1] for i in range(1, len(closes))]
+        gains = [change if change > 0 else 0 for change in price_changes]
+        losses = [-change if change < 0 else 0 for change in price_changes]
+        avg_gain = sum(gains) / len(gains) if gains else 0
+        avg_loss = sum(losses) / len(losses) if losses else 0.001
+        rs = avg_gain / avg_loss
+        rsi = 100 - (100 / (1 + rs))
+        
+        # 2. MACD calculation (simplified)
+        ema_fast = sum(closes[-3:]) / 3 if len(closes) >= 3 else current_price
+        ema_slow = sum(closes) / len(closes)
+        macd_line = ema_fast - ema_slow
+        
+        # 3. Momentum
+        momentum = (current_price - prev_price) / prev_price
+        
+        # 4. Volatility (ATR-like)
         volatility = (max(highs) - min(lows)) / current_price
         
-        # Generate scalping signal with tight SL/TP
+        # 5. Volume analysis
+        avg_volume = sum(volumes) / len(volumes)
+        volume_spike = volumes[-1] / avg_volume if avg_volume > 0 else 1
+        
+        # 6. Support/Resistance
+        recent_high = max(highs)
+        recent_low = min(lows)
+        price_position = (current_price - recent_low) / (recent_high - recent_low) if recent_high != recent_low else 0.5
+        
+        # Generate comprehensive scalping signal with detailed reasoning
         action = "HOLD"
         confidence = 0.5
         reasons = []
+        strategy_name = "Scalping Analysis"
+        technical_factors = {}
+        sentiment_factors = {}
+        
+        # Initialize technical factor analysis
+        technical_factors = {
+            'rsi': round(rsi, 2),
+            'macd': round(macd_line, 5),
+            'momentum_pct': round(momentum * 100, 4),
+            'volatility_pct': round(volatility * 100, 2),
+            'volume_spike': round(volume_spike, 2),
+            'price_position': round(price_position * 100, 1)  # % from low to high
+        }
+        
+        # Add mock sentiment analysis for demonstration
+        # In production, this would come from news/tweet analysis
+        sentiment_score = np.random.normal(0, 0.3)  # Mock sentiment
+        news_impact = np.random.choice(['positive', 'neutral', 'negative'], p=[0.3, 0.4, 0.3])
+        tweet_bias = np.random.choice(['bullish', 'neutral', 'bearish'], p=[0.3, 0.4, 0.3])
+        
+        sentiment_factors = {
+            'news_sentiment': round(sentiment_score, 3),
+            'news_impact': news_impact,
+            'tweet_bias': tweet_bias
+        }
         
         # Scalping-optimized pip values for tight SL/TP
         if symbol == 'XAUUSD':
