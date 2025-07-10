@@ -2178,8 +2178,8 @@ async def simulate_trade_from_signal(symbol: str = "XAUUSD"):
             # Get action index (0=HOLD, 1=BUY, 2=SELL)
             action_idx = 1 if signal_response.action == "BUY" else 2
             
-            # Get strategy using signal response reasons
-            strategy = signal_response.bot_strategy if hasattr(signal_response, 'bot_strategy') else "General Scalping"
+            # Determine strategy used
+            strategy = determine_trading_strategy(signal_response.reasons)
             
             # Calculate reward using the enhanced reward function
             reward = scalping_rl_agent.calculate_scalping_reward(
