@@ -2731,13 +2731,17 @@ async def get_model_status():
         )
     else:
         # Fallback status
+        # Filter model_performance to only include float values for Pydantic
+        float_performance = {k: v for k, v in model_performance.items() 
+                           if isinstance(v, (int, float))}
+        
         return ModelStatus(
             xgboost_active=ml_models.get('xgboost') is not None,
             catboost_active=ml_models.get('catboost') is not None,
             prophet_active=ml_models.get('prophet') is not None,
             tpot_active=False,
             rl_agent_active=rl_agent is not None,
-            performance=model_performance
+            performance=float_performance
         )
 
 @api_router.post("/train-models")
