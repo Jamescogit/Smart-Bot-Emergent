@@ -2150,25 +2150,38 @@ async def simulate_trade_from_signal(symbol: str = "XAUUSD"):
         
         # Train RL agent with this trade
         if scalping_rl_agent:
-            # Prepare state (simplified)
-            current_state = np.random.randn(15)  # Mock state
-            next_state = np.random.randn(15)     # Mock next state
+            # Get current candlestick data for state preparation
+            symbol_candlesticks = candlestick_history.get(symbol, [])
+            
+            # Prepare enhanced state
+            current_state = scalping_rl_agent.prepare_enhanced_scalping_state(symbol, symbol_candlesticks)
+            next_state = scalping_rl_agent.prepare_enhanced_scalping_state(symbol, symbol_candlesticks)  # Same for simplicity
             
             # Get action index (0=HOLD, 1=BUY, 2=SELL)
             action_idx = 1 if signal_response.action == "BUY" else 2
+            
+            # Get strategy using signal response reasons
+            strategy = signal_response.bot_strategy if hasattr(signal_response, 'bot_strategy') else "General Scalping"
             
             # Calculate reward using the enhanced reward function
             reward = scalping_rl_agent.calculate_scalping_reward(
                 action_idx, entry_price, exit_price, symbol, position_size, enhanced_trade["duration_minutes"]
             )
             
+            # Update strategy performance
+            scalping_rl_agent.update_strategy_performance(strategy, symbol, pips_gained)
+            
             # Store experience and potentially train
             scalping_rl_agent.remember(current_state, action_idx, reward, next_state, True)
+            
+            # Check curriculum advancement
+            scalping_rl_agent.advance_curriculum()
             
             # Train every 10 experiences
             if len(scalping_rl_agent.memory) >= 10 and len(scalping_rl_agent.memory) % 10 == 0:
                 scalping_rl_agent.replay(batch_size=min(32, len(scalping_rl_agent.memory)))
                 print(f"🧠 RL Agent trained on {len(scalping_rl_agent.memory)} experiences")
+                print(f"📊 Current Stage: {scalping_rl_agent.get_current_curriculum_stage()['name']}")
         
         print(f"🎯 Trade Simulated: {signal_response.action} {symbol} | P&L: ${dollar_pnl:.2f} | Pips: {pips_gained:.1f}")
         
