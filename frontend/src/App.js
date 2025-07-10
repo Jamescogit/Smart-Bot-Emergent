@@ -163,17 +163,37 @@ function App() {
   const fetchAutoTrainingCheck = async () => {
     try {
       console.log('🤖 Checking auto-training status...');
+      
+      // Set loading state
+      setAutoTrainingStatus({
+        status: 'auto_training',
+        message: '⏳ Checking training status and auto-training if needed...',
+        models_trained: 0
+      });
+      
       const response = await axios.post(`${API}/auto-train-check`, {}, {
-        timeout: 30000,
+        timeout: 60000,  // Increased timeout for training
         headers: { 'Content-Type': 'application/json' }
       });
+      
       console.log('✅ Auto-training check response:', response.data);
       setAutoTrainingStatus(response.data);
       
       // Update model status if training completed
       if (response.data.status === 'auto_trained' || response.data.status === 'completed') {
-        fetchModelStatus();
-        fetchPerformanceMetrics();
+        await fetchModelStatus();
+        await fetchPerformanceMetrics();
+        
+        // Show success message briefly
+        if (response.data.status === 'auto_trained') {
+          setTimeout(() => {
+            setAutoTrainingStatus(prev => ({
+              ...prev,
+              status: 'completed',
+              message: `✅ Training completed successfully! Models: ${response.data.models_trained}/4 active`
+            }));
+          }, 2000);
+        }
       }
     } catch (error) {
       console.error('❌ Error in auto-training check:', error);
