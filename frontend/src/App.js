@@ -858,26 +858,6 @@ function App() {
                   ))}
                 </div>
               </div>
-
-              {/* Training Controls */}
-              <div className="flex justify-center space-x-4 mt-6">
-                {trainingStatus.is_training ? (
-                  <button
-                    onClick={stopTraining}
-                    className="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition-colors"
-                  >
-                    Stop Training
-                  </button>
-                ) : (
-                  <button
-                    onClick={trainModels}
-                    disabled={isTraining}
-                    className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 disabled:bg-gray-400 transition-colors"
-                  >
-                    {isTraining ? 'Starting...' : 'Start Training'}
-                  </button>
-                )}
-              </div>
             </div>
           </div>
         )}
