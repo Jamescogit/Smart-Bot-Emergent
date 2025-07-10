@@ -57,6 +57,7 @@ function App() {
   });
   const [lastSignalUpdate, setLastSignalUpdate] = useState(null);
   const [isLiveMode, setIsLiveMode] = useState(true);
+  const [currentView, setCurrentView] = useState('dashboard'); // dashboard, trade-history, scalping
   
   const intervalRef = useRef(null);
   const trainingIntervalRef = useRef(null);
