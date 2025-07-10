@@ -2953,6 +2953,164 @@ async def get_model_status():
         performance=float_performance
     )
 
+@api_router.get("/enhanced-trade-analysis")
+async def get_enhanced_trade_analysis():
+    """Get enhanced trade analysis with profit factor, strategy performance, and weak strategy detection"""
+    try:
+        # Get trades from database
+        trades_cursor = db.enhanced_trades.find().limit(1000)
+        trades = await trades_cursor.to_list(1000)
+        
+        if not trades:
+            return {
+                "profit_factor": 0.0,
+                "total_trades": 0,
+                "total_profit": 0.0,
+                "total_loss": 0.0,
+                "strategy_performance": {},
+                "top_gainers": [],
+                "top_losers": [],
+                "weak_strategies": [],
+                "strong_strategies": []
+            }
+        
+        # Calculate overall metrics
+        total_trades = len(trades)
+        profitable_trades = [trade for trade in trades if trade.get('profit_loss_pct', 0) > 0]
+        losing_trades = [trade for trade in trades if trade.get('profit_loss_pct', 0) < 0]
+        
+        total_profit = sum(trade.get('profit_loss_pct', 0) for trade in profitable_trades)
+        total_loss = abs(sum(trade.get('profit_loss_pct', 0) for trade in losing_trades))
+        
+        # Calculate Profit Factor
+        profit_factor = total_profit / total_loss if total_loss > 0 else float('inf') if total_profit > 0 else 0.0
+        
+        # Analyze strategy performance
+        strategy_stats = {}
+        for trade in trades:
+            strategy = trade.get('bot_strategy', 'Unknown')
+            if strategy not in strategy_stats:
+                strategy_stats[strategy] = {
+                    'trades': 0,
+                    'wins': 0,
+                    'losses': 0,
+                    'total_pips': 0,
+                    'total_profit': 0,
+                    'win_rate': 0,
+                    'avg_pips': 0,
+                    'profit_factor': 0
+                }
+            
+            stats = strategy_stats[strategy]
+            stats['trades'] += 1
+            
+            pips = trade.get('pips', 0)
+            profit = trade.get('profit_loss_pct', 0)
+            
+            stats['total_pips'] += pips
+            stats['total_profit'] += profit
+            
+            if profit > 0:
+                stats['wins'] += 1
+            else:
+                stats['losses'] += 1
+        
+        # Calculate derived metrics for each strategy
+        for strategy, stats in strategy_stats.items():
+            stats['win_rate'] = (stats['wins'] / stats['trades']) * 100 if stats['trades'] > 0 else 0
+            stats['avg_pips'] = stats['total_pips'] / stats['trades'] if stats['trades'] > 0 else 0
+            
+            # Strategy profit factor
+            strategy_profit = sum(trade.get('profit_loss_pct', 0) for trade in trades 
+                                if trade.get('bot_strategy') == strategy and trade.get('profit_loss_pct', 0) > 0)
+            strategy_loss = abs(sum(trade.get('profit_loss_pct', 0) for trade in trades 
+                               if trade.get('bot_strategy') == strategy and trade.get('profit_loss_pct', 0) < 0))
+            
+            stats['profit_factor'] = strategy_profit / strategy_loss if strategy_loss > 0 else float('inf') if strategy_profit > 0 else 0.0
+        
+        # Identify weak strategies (win rate < 30%, 10+ trades, negative pips)
+        weak_strategies = []
+        strong_strategies = []
+        
+        for strategy, stats in strategy_stats.items():
+            if stats['trades'] >= 10:
+                if stats['win_rate'] < 30 and stats['total_pips'] < 0:
+                    weak_strategies.append({
+                        'strategy': strategy,
+                        'win_rate': round(stats['win_rate'], 1),
+                        'total_pips': round(stats['total_pips'], 1),
+                        'trades': stats['trades'],
+                        'reason': f"Low win rate ({stats['win_rate']:.1f}%) with negative pips ({stats['total_pips']:.1f})"
+                    })
+                elif stats['win_rate'] > 60 and stats['profit_factor'] > 1.5:
+                    strong_strategies.append({
+                        'strategy': strategy,
+                        'win_rate': round(stats['win_rate'], 1),
+                        'profit_factor': round(stats['profit_factor'], 2),
+                        'total_pips': round(stats['total_pips'], 1),
+                        'trades': stats['trades']
+                    })
+        
+        # Get top gainers and losers with strategy + reason
+        sorted_trades = sorted(trades, key=lambda x: x.get('pips', 0), reverse=True)
+        
+        top_gainers = []
+        for trade in sorted_trades[:5]:
+            if trade.get('pips', 0) > 0:
+                top_gainers.append({
+                    'symbol': trade.get('symbol', 'Unknown'),
+                    'pips': round(trade.get('pips', 0), 1),
+                    'strategy': trade.get('bot_strategy', 'Unknown'),
+                    'reason': trade.get('decision_factors', 'No reason available'),
+                    'profit_pct': round(trade.get('profit_loss_pct', 0), 2)
+                })
+        
+        top_losers = []
+        for trade in reversed(sorted_trades[-5:]):
+            if trade.get('pips', 0) < 0:
+                top_losers.append({
+                    'symbol': trade.get('symbol', 'Unknown'),
+                    'pips': round(trade.get('pips', 0), 1),
+                    'strategy': trade.get('bot_strategy', 'Unknown'),
+                    'reason': trade.get('exit_reason', 'No reason available'),
+                    'profit_pct': round(trade.get('profit_loss_pct', 0), 2)
+                })
+        
+        return {
+            "profit_factor": round(profit_factor, 2),
+            "total_trades": total_trades,
+            "total_profit": round(total_profit, 2),
+            "total_loss": round(total_loss, 2),
+            "strategy_performance": {
+                strategy: {
+                    'trades': stats['trades'],
+                    'win_rate': round(stats['win_rate'], 1),
+                    'total_pips': round(stats['total_pips'], 1),
+                    'avg_pips': round(stats['avg_pips'], 2),
+                    'profit_factor': round(stats['profit_factor'], 2)
+                }
+                for strategy, stats in strategy_stats.items()
+            },
+            "top_gainers": top_gainers,
+            "top_losers": top_losers,
+            "weak_strategies": weak_strategies,
+            "strong_strategies": strong_strategies
+        }
+        
+    except Exception as e:
+        print(f"❌ Error in enhanced trade analysis: {e}")
+        return {
+            "profit_factor": 0.0,
+            "total_trades": 0,
+            "total_profit": 0.0,
+            "total_loss": 0.0,
+            "strategy_performance": {},
+            "top_gainers": [],
+            "top_losers": [],
+            "weak_strategies": [],
+            "strong_strategies": []
+        }
+
 @api_router.get("/account-status")
 async def get_account_status():
     """Get current account status with risk management info"""
