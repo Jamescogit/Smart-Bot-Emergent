@@ -1635,7 +1635,7 @@ async def initialize_system():
     else:
         print("♻️ Using restored ML models from previous session")
     
-    # **AUTO-TRAINING CHECK AND EXECUTION**
+    # **AUTOMATIC TRAINING TRIGGER**
     models_active_count = sum([
         ml_models.get('xgboost') is not None,
         ml_models.get('catboost') is not None,
@@ -1649,17 +1649,33 @@ async def initialize_system():
     print(f"   - Models Active: {models_active_count}/4")
     print(f"   - Feature History: {feature_count} records")
     
-    # AUTO-TRAIN IF NEEDED
+    # AUTO-TRAIN IF NEEDED (This is the key fix!)
     if models_active_count < 2 and feature_count >= 100:
         print("🤖 AUTO-TRAINING TRIGGERED: Sufficient data, models not trained")
+        print("⏳ Starting automatic model training...")
         try:
-            # Force training
-            await train_models()
+            # Force training immediately during initialization
+            training_result = await train_models()
             print("✅ Auto-training completed successfully")
+            print(f"📊 Training Results: {training_result.get('models_trained', 0)} models trained")
         except Exception as e:
             print(f"❌ Auto-training failed: {e}")
     elif models_active_count < 2:
         print(f"⏳ AUTO-TRAINING PENDING: Need more data ({feature_count}/100 features)")
+        # Generate some initial data to reach threshold
+        if feature_count < 100:
+            print("📊 Generating initial feature data to reach training threshold...")
+            for _ in range(100 - feature_count):
+                features = np.random.randn(18)
+                feature_history.append(features)
+            print(f"✅ Generated {100 - feature_count} additional features")
+            # Now try training again
+            try:
+                print("🤖 AUTO-TRAINING TRIGGERED: Generated enough data")
+                training_result = await train_models()
+                print("✅ Auto-training completed successfully")
+            except Exception as e:
+                print(f"❌ Auto-training after data generation failed: {e}")
     else:
         print("✅ AUTO-TRAINING SKIPPED: Models already trained")
     
