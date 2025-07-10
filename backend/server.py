@@ -4138,6 +4138,9 @@ async def startup_event():
     await initialize_system()
     # Start background task for market data updates
     asyncio.create_task(update_market_data())
+    # Start continuous learning loop for autonomous trading
+    asyncio.create_task(continuous_learning_loop())
+    print("🚀 Started continuous learning loop for autonomous trading")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
