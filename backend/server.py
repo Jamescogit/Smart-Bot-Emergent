@@ -2042,41 +2042,74 @@ async def simulate_trade_from_signal(symbol: str = "XAUUSD"):
         return None
 
 async def continuous_learning_loop():
-    """Background task for continuous learning and trade simulation"""
+    """Enhanced background task for continuous learning and autonomous trading"""
     learning_active = True
     simulation_count = 0
     
-    print("🚀 Starting continuous learning loop...")
+    print("🚀 Starting enhanced continuous learning loop...")
+    print("🎯 Bot will now make trading decisions every 2 minutes")
     
     while learning_active:
         try:
-            # Run learning cycle every 2 minutes
+            # Make trading decisions every 2 minutes
             await asyncio.sleep(120)
             
-            # Generate trades for different symbols
-            symbols_to_trade = ['XAUUSD', 'EURUSD', 'USDJPY']
+            # Generate trades for all symbols with smart probability
+            symbols_to_trade = ['XAUUSD', 'EURUSD', 'USDJPY', 'EURJPY']
             
             for symbol in symbols_to_trade:
-                # Simulate trade with 30% probability to avoid overtrading
-                if np.random.random() < 0.3:
+                # Higher probability for XAUUSD (our best performer)
+                # Lower probability for EURUSD (needs improvement)
+                trade_probabilities = {
+                    'XAUUSD': 0.6,  # Higher probability for gold
+                    'USDJPY': 0.4,  # Medium probability
+                    'EURJPY': 0.4,  # Medium probability
+                    'EURUSD': 0.2   # Lower probability until we fix the issues
+                }
+                
+                trade_prob = trade_probabilities.get(symbol, 0.3)
+                
+                # Make trading decision
+                if np.random.random() < trade_prob:
                     trade_result = await simulate_trade_from_signal(symbol)
                     if trade_result:
                         simulation_count += 1
                         
-                        # Print learning progress every 10 trades
-                        if simulation_count % 10 == 0:
-                            print(f"📊 Learning Progress: {simulation_count} trades simulated")
+                        # Enhanced learning: Train RL agent after each trade
+                        if scalping_rl_agent and len(scalping_rl_agent.memory) > 10:
+                            try:
+                                scalping_rl_agent.replay(batch_size=min(32, len(scalping_rl_agent.memory)))
+                                print(f"🧠 RL Agent trained after trade #{simulation_count}")
+                            except Exception as e:
+                                print(f"❌ Error training RL agent: {e}")
+                        
+                        # Print detailed learning progress
+                        if simulation_count % 5 == 0:
+                            print(f"📊 Enhanced Learning Progress: {simulation_count} trades simulated")
                             print(f"   - RL Agent Memory: {len(scalping_rl_agent.memory) if scalping_rl_agent else 0}")
                             print(f"   - Current Balance: ${current_balance:.2f}")
                             print(f"   - Epsilon: {scalping_rl_agent.epsilon:.3f}" if scalping_rl_agent else "N/A")
+                            print(f"   - Win Rate: {(scalping_rl_agent.winning_trades/scalping_rl_agent.trades_made*100):.1f}%" if scalping_rl_agent and scalping_rl_agent.trades_made > 0 else "N/A")
+                            print(f"   - Total Pips: {scalping_rl_agent.total_pips:.1f}" if scalping_rl_agent else "N/A")
+                
+                # Small delay between symbols
+                await asyncio.sleep(5)
             
-            # Save progress every hour (30 cycles)
-            if simulation_count > 0 and simulation_count % 30 == 0:
+            # Save progress every 15 minutes (7-8 cycles)
+            if simulation_count > 0 and simulation_count % 8 == 0:
                 try:
                     save_all_persistent_data()
-                    print(f"💾 Saved learning progress after {simulation_count} simulated trades")
+                    print(f"💾 Auto-saved learning progress after {simulation_count} trades")
                 except Exception as e:
                     print(f"❌ Error saving progress: {e}")
+            
+            # Log system health every hour
+            if simulation_count % 30 == 0 and simulation_count > 0:
+                print(f"🏥 System Health Check:")
+                print(f"   - Total Trades: {simulation_count}")
+                print(f"   - Memory Usage: {len(scalping_rl_agent.memory) if scalping_rl_agent else 0}/2000")
+                print(f"   - Learning Rate: {scalping_rl_agent.lr if scalping_rl_agent else 'N/A'}")
+                print(f"   - Exploration: {scalping_rl_agent.epsilon:.3f}" if scalping_rl_agent else "N/A")
                     
         except Exception as e:
             print(f"❌ Error in continuous learning loop: {e}")
