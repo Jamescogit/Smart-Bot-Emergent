@@ -548,46 +548,93 @@ class ScalpingRLAgent:
         q_values = self.forward(state.reshape(1, -1))
         return np.argmax(q_values)
     
-    def calculate_scalping_reward(self, action, entry_price, exit_price, symbol):
-        """Calculate reward optimized for scalping"""
-        pip_values = {
-            'XAUUSD': 0.1,
-            'EURUSD': 0.0001,
-            'EURJPY': 0.01,
-            'USDJPY': 0.01,
-            'NASDAQ': 1.0
-        }
-        
-        pip_value = pip_values.get(symbol, 0.01)
-        
-        if action == 0:  # HOLD
-            return 0
-        elif action == 1:  # BUY
-            pips = (exit_price - entry_price) / pip_value
-        else:  # SELL
-            pips = (entry_price - exit_price) / pip_value
-        
-        # Update performance tracking
-        self.trades_made += 1
-        self.total_pips += pips
-        
-        if pips > 0:
-            self.winning_trades += 1
-            self.current_streak = max(0, self.current_streak + 1)
-        else:
-            self.current_streak = min(0, self.current_streak - 1)
-        
-        # Reward function optimized for scalping
-        if pips >= self.pip_target:
-            reward = 1.0 + (pips - self.pip_target) * 0.1  # Bonus for exceeding target
-        elif pips > 0:
-            reward = pips / self.pip_target  # Partial reward for positive pips
-        elif pips >= -self.pip_stop_loss:
-            reward = pips / self.pip_stop_loss  # Moderate penalty for small losses
-        else:
-            reward = -2.0  # Heavy penalty for exceeding stop loss
-        
-        return reward
+    def calculate_scalping_reward(self, action, entry_price, exit_price, symbol, position_size=0.1, trade_duration_minutes=1):
+        """Calculate reward optimized for scalping with risk management"""
+        try:
+            # Calculate actual P&L
+            if action == 1:  # BUY trade
+                pips_gained = (exit_price - entry_price) * (10000 if symbol in ['EURUSD', 'EURJPY', 'USDJPY'] else 10)
+            elif action == 2:  # SELL trade  
+                pips_gained = (entry_price - exit_price) * (10000 if symbol in ['EURUSD', 'EURJPY', 'USDJPY'] else 10)
+            else:
+                return 0  # HOLD action
+            
+            # Calculate dollar P&L based on position size
+            if symbol == 'XAUUSD':
+                pip_value = 0.1
+            elif symbol in ['EURUSD']:
+                pip_value = 0.0001
+            elif symbol in ['USDJPY', 'EURJPY']:
+                pip_value = 0.01
+            else:
+                pip_value = 0.0001
+                
+            dollar_pnl = pips_gained * pip_value * position_size * 100000
+            
+            # RISK MANAGEMENT REWARDS
+            base_reward = 0
+            
+            # 1. P&L Reward (scaled to account size)
+            pnl_reward = dollar_pnl / MAX_RISK_PER_TRADE  # Normalize by max risk ($3)
+            
+            # 2. Risk Management Bonus/Penalty
+            risk_reward = 0
+            if dollar_pnl > 0:
+                # Winning trade: bonus for staying within risk limits
+                if abs(dollar_pnl) <= MAX_RISK_PER_TRADE * 2:  # Within 2x risk
+                    risk_reward = 0.5  # Bonus for controlled risk
+                else:
+                    risk_reward = 0.2  # Lower bonus for excessive risk
+            else:
+                # Losing trade: penalty based on risk management
+                if abs(dollar_pnl) <= MAX_RISK_PER_TRADE:  # Loss within $3 limit
+                    risk_reward = -0.3  # Acceptable loss
+                else:
+                    risk_reward = -1.0  # Excessive loss penalty
+            
+            # 3. Time-based reward (scalping should be fast)
+            time_reward = 0
+            if trade_duration_minutes <= 2:
+                time_reward = 0.3  # Fast scalping bonus
+            elif trade_duration_minutes <= 5:
+                time_reward = 0.1  # Acceptable timing
+            else:
+                time_reward = -0.2  # Too slow for scalping
+            
+            # 4. Account preservation reward
+            account_health_reward = 0
+            if current_balance > STARTING_BALANCE * 0.9:  # Account above 90%
+                account_health_reward = 0.2
+            elif current_balance > STARTING_BALANCE * 0.8:  # Account above 80%
+                account_health_reward = 0.1
+            elif current_balance < STARTING_BALANCE * 0.7:  # Account below 70%
+                account_health_reward = -0.5  # Major penalty
+            
+            # Combined reward
+            total_reward = pnl_reward + risk_reward + time_reward + account_health_reward
+            
+            # Update performance tracking
+            if dollar_pnl > 0:
+                self.winning_trades += 1
+                self.current_streak = max(0, self.current_streak) + 1
+            else:
+                self.current_streak = min(0, self.current_streak) - 1
+            
+            self.total_pips += pips_gained
+            self.trades_made += 1
+            
+            print(f"🎯 Scalping Reward Calculation:")
+            print(f"   - P&L: ${dollar_pnl:.2f} ({pips_gained:.1f} pips)")
+            print(f"   - Risk Mgmt: {risk_reward:.2f}")
+            print(f"   - Time: {time_reward:.2f}")
+            print(f"   - Account Health: {account_health_reward:.2f}")
+            print(f"   - Total Reward: {total_reward:.3f}")
+            
+            return float(total_reward)
+            
+        except Exception as e:
+            print(f"Error calculating scalping reward: {e}")
+            return 0.0
     
     def remember(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done))
