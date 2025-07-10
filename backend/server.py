@@ -18,6 +18,9 @@ import json
 import pickle
 from collections import deque
 import schedule
+import time
+from concurrent.futures import ThreadPoolExecutor
+import yfinance as yf
 
 # ===== REAL iTick API Integration =====
 class RealITickDataFeed:
