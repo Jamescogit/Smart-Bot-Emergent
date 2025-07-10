@@ -1947,6 +1947,17 @@ async def update_market_data():
             print(f"Error in market data update: {e}")
             await asyncio.sleep(10)
 
+def update_account_balance(pnl):
+    """Update current account balance"""
+    global current_balance
+    current_balance += pnl
+    
+    # Ensure balance doesn't go negative
+    if current_balance < 0:
+        current_balance = 0.01  # Keep a penny to prevent division by zero
+    
+    return current_balance
+
 async def simulate_trade_from_signal(symbol: str = "XAUUSD"):
     """Simulate a trade based on current scalping signal and train RL agent"""
     try:
