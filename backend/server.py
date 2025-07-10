@@ -2073,6 +2073,24 @@ async def update_market_data():
             print(f"Error in market data update: {e}")
             await asyncio.sleep(10)
 
+def determine_trading_strategy(reasons):
+    """Determine trading strategy based on signal reasons"""
+    if not reasons:
+        return "general"
+    
+    reasons_text = " ".join(reasons).lower()
+    
+    if "trend" in reasons_text or "momentum" in reasons_text:
+        return "trend_following"
+    elif "oversold" in reasons_text or "overbought" in reasons_text or "reversal" in reasons_text:
+        return "mean_reversion"
+    elif "breakout" in reasons_text or "support" in reasons_text or "resistance" in reasons_text:
+        return "breakout"
+    elif "volume" in reasons_text or "spike" in reasons_text:
+        return "momentum"
+    else:
+        return "general"
+
 def update_account_balance(pnl):
     """Update current account balance"""
     global current_balance
