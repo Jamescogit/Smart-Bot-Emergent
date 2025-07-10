@@ -396,8 +396,10 @@ function App() {
     }
   }, [isAutoRefresh, selectedSymbol, trainingStatus.is_training, autoRefreshInterval]);
 
-  // Initial data fetch
+  // Initial data fetch with auto-training
   useEffect(() => {
+    console.log('🚀 Dashboard loading - starting auto-training check...');
+    fetchAutoTrainingCheck();  // Check and auto-train if needed
     fetchMarketData();
     fetchTechnicalIndicators(selectedSymbol);
     fetchTradingSignals(selectedSymbol);
