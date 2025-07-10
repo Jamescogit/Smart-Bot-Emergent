@@ -1682,6 +1682,31 @@ async def fetch_historical_data(symbol: str, period: str = '1d') -> pd.DataFrame
     
     return df
 
+def generate_fallback_data(symbol):
+    """Generate fallback data when API is unavailable"""
+    # Use more realistic base prices
+    base_prices = {
+        'XAUUSD': 2680.0,  # Gold current range
+        'EURUSD': 1.0450,  # EUR/USD current range
+        'EURJPY': 163.5,   # EUR/JPY current range
+        'USDJPY': 156.2,   # USD/JPY current range
+        'GBPUSD': 1.2650   # GBP/USD current range
+    }
+    
+    base_price = base_prices.get(symbol, 100.0)
+    
+    # Add small random variation (0.1% max)
+    variation = np.random.uniform(-0.001, 0.001)
+    price = base_price * (1 + variation)
+    
+    return {
+        'symbol': symbol,
+        'price': price,
+        'change': np.random.uniform(-0.5, 0.5),
+        'volume': np.random.randint(500000, 2000000),
+        'timestamp': datetime.now()
+    }
+
 def calculate_technical_indicators(df: pd.DataFrame) -> Dict:
     """Calculate technical indicators using custom functions"""
     if df.empty or len(df) < 20:
