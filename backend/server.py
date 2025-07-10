@@ -2789,35 +2789,43 @@ async def get_trading_history():
 @api_router.get("/model-status")
 async def get_model_status():
     """Get comprehensive ML model status"""
-    if ML_ENGINE_AVAILABLE and ensemble_ml_engine:
-        models_active = ensemble_ml_engine.models_trained
-        
-        # Filter model_performance to only include float values for Pydantic
-        float_performance = {k: v for k, v in model_performance.items() 
-                           if isinstance(v, (int, float))}
-        
-        return ModelStatus(
-            xgboost_active=models_active.get('xgboost', False),
-            catboost_active=models_active.get('catboost', False),
-            prophet_active=models_active.get('prophet', False),
-            tpot_active=models_active.get('tpot', False),
-            rl_agent_active=rl_agent is not None,
-            performance=float_performance
-        )
-    else:
-        # Fallback status
-        # Filter model_performance to only include float values for Pydantic
-        float_performance = {k: v for k, v in model_performance.items() 
-                           if isinstance(v, (int, float))}
-        
-        return ModelStatus(
-            xgboost_active=ml_models.get('xgboost') is not None,
-            catboost_active=ml_models.get('catboost') is not None,
-            prophet_active=ml_models.get('prophet') is not None,
-            tpot_active=False,
-            rl_agent_active=rl_agent is not None,
-            performance=float_performance
-        )
+    # Always use fallback status to show actual model state
+    # Filter model_performance to only include float values for Pydantic
+    float_performance = {k: v for k, v in model_performance.items() 
+                       if isinstance(v, (int, float))}
+    
+    # Check actual model objects in memory
+    models_status = {
+        'xgboost': ml_models.get('xgboost') is not None,
+        'catboost': ml_models.get('catboost') is not None,
+        'prophet': ml_models.get('prophet') is not None,
+        'tpot': ml_models.get('tpot') is not None
+    }
+    
+    # Add training timestamp if available
+    last_trained_str = model_performance.get('last_trained')
+    last_trained_dt = None
+    if last_trained_str:
+        try:
+            last_trained_dt = datetime.fromisoformat(last_trained_str.replace('Z', '+00:00'))
+        except:
+            pass
+    
+    print(f"🔍 Model Status Check:")
+    print(f"   - XGBoost: {'✅ Active' if models_status['xgboost'] else '❌ Inactive'}")
+    print(f"   - CatBoost: {'✅ Active' if models_status['catboost'] else '❌ Inactive'}")
+    print(f"   - Prophet: {'✅ Active' if models_status['prophet'] else '❌ Inactive'}")
+    print(f"   - TPOT: {'✅ Active' if models_status['tpot'] else '❌ Inactive'}")
+    
+    return ModelStatus(
+        xgboost_active=models_status['xgboost'],
+        catboost_active=models_status['catboost'],
+        prophet_active=models_status['prophet'],
+        tpot_active=models_status['tpot'],
+        rl_agent_active=rl_agent is not None,
+        last_trained=last_trained_dt,
+        performance=float_performance
+    )
 
 @api_router.post("/auto-train-check")
 async def auto_train_check():
