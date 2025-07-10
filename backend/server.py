@@ -3711,6 +3711,43 @@ async def get_bot_trading_status():
             }
         }
 
+@api_router.post("/manual-trade/{symbol}")
+async def manual_trade(symbol: str):
+    """Manually trigger a trade for testing - simulates the continuous learning behavior"""
+    if symbol not in SYMBOLS:
+        raise HTTPException(status_code=400, detail="Invalid symbol")
+    
+    try:
+        print(f"🎯 Manual trade triggered for {symbol}")
+        trade_result = await simulate_trade_from_signal(symbol)
+        
+        if trade_result:
+            # Train RL agent if we have enough memory
+            if scalping_rl_agent and len(scalping_rl_agent.memory) > 10:
+                scalping_rl_agent.replay(batch_size=min(32, len(scalping_rl_agent.memory)))
+                print(f"🧠 RL Agent trained after manual trade")
+            
+            return {
+                "success": True,
+                "trade": trade_result,
+                "message": f"Manual trade executed for {symbol}",
+                "rl_status": {
+                    "memory_size": len(scalping_rl_agent.memory) if scalping_rl_agent else 0,
+                    "trades_made": scalping_rl_agent.trades_made if scalping_rl_agent else 0,
+                    "epsilon": round(scalping_rl_agent.epsilon, 3) if scalping_rl_agent else 1.0
+                }
+            }
+        else:
+            return {
+                "success": False,
+                "message": f"No trade signal generated for {symbol}",
+                "signal_action": "HOLD"
+            }
+            
+    except Exception as e:
+        print(f"❌ Error in manual trade: {e}")
+        raise HTTPException(status_code=500, detail=f"Manual trade failed: {str(e)}")
+
 @api_router.post("/auto-train-check")
 async def auto_train_check():
     """Automatically check if training is needed and train models if necessary"""
