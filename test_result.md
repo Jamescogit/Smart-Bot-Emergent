@@ -272,7 +272,12 @@ test_plan:
     - "Real-time Trading Status API"
     - "Multi-timeframe Analysis"
   stuck_tasks:
+    - "Twelve Data API Integration"
+    - "Continuous Learning Loop"
+    - "Enhanced Reward Function"
+    - "Strategy Learning & Curriculum Learning"
     - "Real-time Trading Status API"
+    - "Multi-timeframe Analysis"
   test_all: false
   test_priority: "high_first"
 
@@ -281,3 +286,7 @@ agent_communication:
     message: "MAJOR ENHANCEMENT COMPLETED: Integrated Twelve Data API for real-time market data, implemented continuous learning loop for autonomous trading, added enhanced reward function with currency-specific optimization, strategy learning, curriculum learning, and multi-timeframe analysis. Bot now makes trading decisions every 2 minutes autonomously. Real-time data confirmed working for all symbols."
   - agent: "main"
     message: "ISSUE IDENTIFIED: Real-time Trading Status API has ObjectId serialization errors. Need backend testing to verify all new endpoints work correctly."
+  - agent: "testing"
+    message: "COMPREHENSIVE TESTING COMPLETED: Found critical issues with backend implementation. While core logic exists in code, many features lack proper API endpoints for monitoring and verification. ObjectId serialization errors prevent key endpoints from working."
+  - agent: "testing"
+    message: "CRITICAL FINDINGS: 1) ObjectId serialization errors in /api/market-data/{symbol} and /api/bot-trading-status endpoints causing 500 errors. 2) Missing API endpoints for monitoring continuous learning, reward function, strategy learning, and multi-timeframe analysis. 3) Only some symbols work in market data API. 4) Core functionality exists but cannot be verified through API."
