@@ -787,15 +787,90 @@ class ScalpingRLAgent:
         self.W1 -= self.lr * dW1
         self.b1 -= self.lr * db1
     
+    def update_strategy_performance(self, strategy, symbol, pips_gained):
+        """Update strategy performance tracking"""
+        if strategy in self.strategy_performance:
+            self.strategy_performance[strategy]['trades'] += 1
+            if pips_gained > 0:
+                self.strategy_performance[strategy]['wins'] += 1
+            self.strategy_performance[strategy]['pips'] += pips_gained
+        
+        # Update currency performance
+        if symbol in self.currency_performance:
+            self.currency_performance[symbol]['trades'] += 1
+            if pips_gained > 0:
+                self.currency_performance[symbol]['wins'] += 1
+            self.currency_performance[symbol]['pips'] += pips_gained
+            
+            # Adjust confidence based on performance
+            win_rate = self.currency_performance[symbol]['wins'] / max(1, self.currency_performance[symbol]['trades'])
+            self.currency_performance[symbol]['confidence'] = min(1.0, max(0.1, win_rate))
+    
+    def get_current_curriculum_stage(self):
+        """Get current curriculum learning stage"""
+        if self.curriculum_stage < len(self.curriculum_stages):
+            return self.curriculum_stages[self.curriculum_stage]
+        return self.curriculum_stages[-1]  # Stay at final stage
+    
+    def should_advance_curriculum(self):
+        """Check if bot should advance to next curriculum stage"""
+        if self.curriculum_stage >= len(self.curriculum_stages) - 1:
+            return False
+        
+        current_stage = self.curriculum_stages[self.curriculum_stage]
+        
+        # Check if we have enough trades in current stage symbols
+        total_trades = sum(self.currency_performance[symbol]['trades'] 
+                          for symbol in current_stage['symbols'] 
+                          if symbol in self.currency_performance)
+        
+        if total_trades < current_stage['min_trades']:
+            return False
+        
+        # Check win rate requirement
+        total_wins = sum(self.currency_performance[symbol]['wins'] 
+                        for symbol in current_stage['symbols'] 
+                        if symbol in self.currency_performance)
+        
+        win_rate = (total_wins / max(1, total_trades)) * 100
+        
+        return win_rate >= current_stage['min_winrate']
+    
+    def advance_curriculum(self):
+        """Advance to next curriculum stage"""
+        if self.should_advance_curriculum():
+            self.curriculum_stage += 1
+            print(f"🎓 Curriculum Advanced to Stage {self.curriculum_stage}: {self.get_current_curriculum_stage()['name']}")
+            return True
+        return False
+    
     def get_performance_metrics(self):
         win_rate = (self.winning_trades / self.trades_made * 100) if self.trades_made > 0 else 0
+        
+        # Calculate strategy performance
+        best_strategy = None
+        best_strategy_winrate = 0
+        
+        for strategy, perf in self.strategy_performance.items():
+            if perf['trades'] > 0:
+                strategy_winrate = (perf['wins'] / perf['trades']) * 100
+                if strategy_winrate > best_strategy_winrate:
+                    best_strategy = strategy
+                    best_strategy_winrate = strategy_winrate
+        
         return {
             'trades_made': self.trades_made,
             'winning_trades': self.winning_trades,
             'win_rate': win_rate,
             'total_pips': self.total_pips,
             'current_streak': self.current_streak,
-            'epsilon': self.epsilon
+            'epsilon': self.epsilon,
+            'curriculum_stage': self.curriculum_stage,
+            'current_stage_name': self.get_current_curriculum_stage()['name'],
+            'best_strategy': best_strategy,
+            'best_strategy_winrate': best_strategy_winrate,
+            'currency_performance': self.currency_performance,
+            'strategy_performance': self.strategy_performance
         }
 
 # Reinforcement Learning Agent
