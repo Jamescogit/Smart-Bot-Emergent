@@ -2953,6 +2953,35 @@ async def get_model_status():
         performance=float_performance
     )
 
+@api_router.get("/account-status")
+async def get_account_status():
+    """Get current account status with risk management info"""
+    try:
+        # Calculate current metrics
+        win_rate = (scalping_rl_agent.winning_trades / scalping_rl_agent.trades_made * 100) if scalping_rl_agent and scalping_rl_agent.trades_made > 0 else 0
+        total_pnl = current_balance - STARTING_BALANCE
+        pnl_percentage = (total_pnl / STARTING_BALANCE) * 100
+        
+        # Risk metrics
+        daily_risk_used = min(total_trades_made * MAX_RISK_PER_TRADE, current_balance * 0.1)  # Max 10% daily risk
+        remaining_daily_risk = (current_balance * 0.1) - daily_risk_used
+        
+        return {
+            "starting_balance": STARTING_BALANCE,
+            "current_balance": round(current_balance, 2),
+            "total_pnl": round(total_pnl, 2),
+            "pnl_percentage": round(pnl_percentage, 2),
+            "risk_per_trade_pct": RISK_PER_TRADE_PCT,
+            "max_risk_per_trade": MAX_RISK_PER_TRADE,
+            "daily_risk_used": round(daily_risk_used, 2),
+            "remaining_daily_risk": round(remaining_daily_risk, 2),
+            "total_trades": total_trades_made,
+            "win_rate": round(win_rate, 1),
+            "account_health": "Healthy" if current_balance > STARTING_BALANCE * 0.8 else "At Risk" if current_balance > STARTING_BALANCE * 0.6 else "Critical"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting account status: {str(e)}")
+
 @api_router.post("/auto-train-check")
 async def auto_train_check():
     """Automatically check if training is needed and train models if necessary"""
