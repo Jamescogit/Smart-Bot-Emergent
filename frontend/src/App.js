@@ -1198,56 +1198,99 @@ function App() {
           </div>
         </div>
 
-        {/* Trading History Table */}
+        {/* Bot Readiness Score */}
         <div className="bg-white rounded-lg shadow mt-6">
           <div className="p-4 border-b">
-            <h3 className="text-lg font-semibold text-gray-800">Recent Trading History</h3>
+            <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+              <Target className="w-5 h-5 mr-2 text-purple-600" />
+              🎯 Bot Readiness Score
+            </h3>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="text-left p-4 font-medium text-gray-700">Symbol</th>
-                  <th className="text-left p-4 font-medium text-gray-700">Action</th>
-                  <th className="text-left p-4 font-medium text-gray-700">Entry Price</th>
-                  <th className="text-left p-4 font-medium text-gray-700">Exit Price</th>
-                  <th className="text-left p-4 font-medium text-gray-700">Profit</th>
-                  <th className="text-left p-4 font-medium text-gray-700">Pips</th>
-                  <th className="text-left p-4 font-medium text-gray-700">Bot Strategy</th>
-                  <th className="text-left p-4 font-medium text-gray-700">Status</th>
-                  <th className="text-left p-4 font-medium text-gray-700">Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tradingHistory.slice(0, 10).map((trade, idx) => (
-                  <tr key={idx} className="border-b hover:bg-gray-50">
-                    <td className="p-4 font-medium text-gray-900">{trade.symbol}</td>
-                    <td className={`p-4 ${getSignalColor(trade.action)}`}>{trade.action}</td>
-                    <td className="p-4 text-gray-700">${trade.entry_price?.toFixed(4)}</td>
-                    <td className="p-4 text-gray-700">${trade.exit_price?.toFixed(4) || '-'}</td>
-                    <td className={`p-4 ${trade.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      ${trade.profit?.toFixed(2) || '-'}
-                    </td>
-                    <td className={`p-4 ${trade.pips >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {trade.pips?.toFixed(1) || '-'}
-                    </td>
-                    <td className="p-4">
-                      <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                        {trade.bot_strategy || 'Default'}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <span className={`px-2 py-1 rounded text-xs ${trade.is_closed ? 'bg-gray-100 text-gray-800' : 'bg-blue-100 text-blue-800'}`}>
-                        {trade.is_closed ? 'Closed' : 'Open'}
-                      </span>
-                    </td>
-                    <td className="p-4 text-gray-500">
-                      {new Date(trade.timestamp).toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="p-6">
+            <div className="text-center mb-6">
+              <div className={`text-4xl font-bold mb-2 ${
+                botReadiness.is_ready ? 'text-green-600' : 'text-yellow-600'
+              }`}>
+                {botReadiness.readiness_score || 0}%
+              </div>
+              <div className={`text-lg font-medium ${
+                botReadiness.is_ready ? 'text-green-600' : 'text-yellow-600'
+              }`}>
+                {botReadiness.status || '⏳ Still Learning'}
+              </div>
+            </div>
+            
+            {/* Readiness Criteria */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <div className={`text-2xl mb-2 ${
+                  botReadiness.criteria?.models_trained ? 'text-green-600' : 'text-gray-400'
+                }`}>
+                  {botReadiness.criteria?.models_trained ? '✅' : '⏳'}
+                </div>
+                <div className="text-sm font-medium text-gray-700">Models Trained</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {botReadiness.details?.models || 'Checking...'}
+                </div>
+              </div>
+              
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <div className={`text-2xl mb-2 ${
+                  botReadiness.criteria?.avg_pips_positive ? 'text-green-600' : 'text-gray-400'
+                }`}>
+                  {botReadiness.criteria?.avg_pips_positive ? '✅' : '⏳'}
+                </div>
+                <div className="text-sm font-medium text-gray-700">Performance</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {botReadiness.details?.performance || 'Checking...'}
+                </div>
+              </div>
+              
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <div className={`text-2xl mb-2 ${
+                  botReadiness.criteria?.top_strategy_good ? 'text-green-600' : 'text-gray-400'
+                }`}>
+                  {botReadiness.criteria?.top_strategy_good ? '✅' : '⏳'}
+                </div>
+                <div className="text-sm font-medium text-gray-700">Strategy</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {botReadiness.details?.strategy || 'Checking...'}
+                </div>
+              </div>
+            </div>
+            
+            {/* High Confidence Alert */}
+            {scalpingSignals[selectedSymbol]?.confidence > 0.65 && (
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mt-4">
+                <div className="flex items-center">
+                  <AlertCircle className="w-5 h-5 text-orange-600 mr-2" />
+                  <div className="flex-1">
+                    <div className="font-semibold text-orange-800">
+                      🔥 High Confidence Signal Alert!
+                    </div>
+                    <div className="text-sm text-orange-600 mt-1">
+                      {scalpingSignals[selectedSymbol].action} {selectedSymbol} - 
+                      Confidence: {(scalpingSignals[selectedSymbol].confidence * 100).toFixed(1)}%
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Recommendations */}
+            {botReadiness.recommendations && botReadiness.recommendations.length > 0 && (
+              <div className="mt-4">
+                <div className="text-sm font-medium text-gray-700 mb-2">Recommendations:</div>
+                <div className="space-y-1">
+                  {botReadiness.recommendations.map((rec, idx) => (
+                    <div key={idx} className="text-xs text-gray-600 flex items-center">
+                      <span className="w-1 h-1 bg-gray-400 rounded-full mr-2"></span>
+                      {rec}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
