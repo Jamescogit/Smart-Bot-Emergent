@@ -50,7 +50,13 @@ function App() {
   const [scalpingSignals, setScalpingSignals] = useState({});
   const [scalpingRLPerformance, setScalpingRLPerformance] = useState({});
   const [autoRefreshInterval, setAutoRefreshInterval] = useState(30); // 30 seconds
-  const [currentView, setCurrentView] = useState('dashboard'); // dashboard, trade-history, scalping
+  const [autoTrainingStatus, setAutoTrainingStatus] = useState({
+    status: 'checking',
+    message: 'Checking training status...',
+    models_trained: 0
+  });
+  const [lastSignalUpdate, setLastSignalUpdate] = useState(null);
+  const [isLiveMode, setIsLiveMode] = useState(true);
   
   const intervalRef = useRef(null);
   const trainingIntervalRef = useRef(null);
