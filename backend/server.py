@@ -468,62 +468,88 @@ class ScalpingRLAgent:
         self.total_pips = 0
         self.current_streak = 0
         
-    def prepare_scalping_state(self, candlestick_data):
-        """Prepare state vector optimized for scalping"""
-        if len(candlestick_data) < 10:
+    def prepare_enhanced_scalping_state(self, symbol, candlestick_data):
+        """Enhanced state preparation with multi-timeframe analysis"""
+        if len(candlestick_data) < 15:
             return np.zeros(self.state_size)
         
-        recent_candles = candlestick_data[-10:]  # Last 10 minutes
+        recent_candles = candlestick_data[-15:]  # Last 15 minutes
         
-        # Extract features for scalping
+        # Extract OHLC data
         closes = [candle['close'] for candle in recent_candles]
         highs = [candle['high'] for candle in recent_candles]
         lows = [candle['low'] for candle in recent_candles]
         volumes = [candle['volume'] for candle in recent_candles]
         
-        # Calculate scalping-specific features
         current_price = closes[-1]
         
-        # 1. Short-term momentum (1, 2, 3 minute)
+        # Multi-timeframe momentum analysis
         momentum_1m = (closes[-1] - closes[-2]) / closes[-2] if len(closes) >= 2 else 0
-        momentum_2m = (closes[-1] - closes[-3]) / closes[-3] if len(closes) >= 3 else 0
         momentum_3m = (closes[-1] - closes[-4]) / closes[-4] if len(closes) >= 4 else 0
+        momentum_5m = (closes[-1] - closes[-6]) / closes[-6] if len(closes) >= 6 else 0
+        momentum_15m = (closes[-1] - closes[-15]) / closes[-15] if len(closes) >= 15 else 0
         
-        # 2. Volatility measures
-        price_range = (max(highs) - min(lows)) / current_price
+        # Currency-specific features
+        if symbol == 'XAUUSD':
+            # Gold-specific features
+            volatility_multiplier = 2.0
+            support_resistance_strength = 1.5
+        elif symbol == 'EURUSD':
+            # EUR/USD - focus on false breakout detection
+            volatility_multiplier = 0.8
+            support_resistance_strength = 2.0
+        elif symbol in ['USDJPY', 'EURJPY']:
+            # JPY pairs - momentum continuation
+            volatility_multiplier = 1.2
+            support_resistance_strength = 1.0
+        else:
+            volatility_multiplier = 1.0
+            support_resistance_strength = 1.0
+        
+        # Enhanced volatility measures
+        price_range = (max(highs) - min(lows)) / current_price * volatility_multiplier
         volume_spike = volumes[-1] / np.mean(volumes[:-1]) if len(volumes) > 1 else 1
         
-        # 3. Support/Resistance levels
+        # Market structure analysis
         recent_high = max(highs)
         recent_low = min(lows)
-        distance_to_high = (recent_high - current_price) / current_price
-        distance_to_low = (current_price - recent_low) / current_price
+        distance_to_high = (recent_high - current_price) / current_price * support_resistance_strength
+        distance_to_low = (current_price - recent_low) / current_price * support_resistance_strength
         
-        # 4. Price action patterns
+        # Pattern recognition features
         green_candles = sum(1 for candle in recent_candles if candle['close'] > candle['open'])
         red_candles = len(recent_candles) - green_candles
         
-        # 5. Trend indicators
+        # Advanced trend analysis
         sma_3 = np.mean(closes[-3:])
         sma_5 = np.mean(closes[-5:])
-        price_vs_sma3 = (current_price - sma_3) / sma_3
-        price_vs_sma5 = (current_price - sma_5) / sma_5
+        sma_10 = np.mean(closes[-10:])
         
-        # Combine features into state vector
+        trend_strength = (sma_3 - sma_10) / sma_10 if sma_10 > 0 else 0
+        
+        # Session-based features (mock for now)
+        hour = datetime.now().hour
+        session_features = {
+            'asian_session': 1.0 if 0 <= hour < 8 else 0.0,
+            'london_session': 1.0 if 8 <= hour < 16 else 0.0,
+            'ny_session': 1.0 if 16 <= hour < 24 else 0.0
+        }
+        
+        # Combine all features
         state = np.array([
-            momentum_1m * 1000,  # Short-term momentum
-            momentum_2m * 1000,  # Medium-term momentum
-            momentum_1m * 1000,  # Repeat short-term for consistency
-            price_range * 1000,  # Volatility measure
-            volume_spike,        # Volume analysis
-            distance_to_high * 1000,  # Distance to resistance
-            distance_to_low * 1000,   # Distance to support
+            momentum_1m * 1000,      # 1-minute momentum
+            momentum_3m * 1000,      # 3-minute momentum  
+            momentum_5m * 1000,      # 5-minute momentum
+            price_range * 1000,      # Volatility
+            volume_spike,            # Volume analysis
+            distance_to_high * 1000, # Resistance distance
+            distance_to_low * 1000,  # Support distance
             green_candles / len(recent_candles),  # Bullish pressure
             red_candles / len(recent_candles),    # Bearish pressure
-            price_vs_sma3 * 1000,    # Short-term trend
-            price_vs_sma3 * 1000,    # Repeat for consistency
-            np.tanh(current_price / 1000),  # Normalized price
-            self.epsilon,        # Exploration factor
+            trend_strength * 1000,   # Trend strength
+            session_features['asian_session'],    # Asian session
+            session_features['london_session'],   # London session
+            self.epsilon,            # Exploration factor
             self.trades_made / 100,  # Experience factor
             self.total_pips / 1000   # Performance factor
         ])
