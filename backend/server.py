@@ -2267,78 +2267,118 @@ async def simulate_trade_from_signal(symbol: str = "XAUUSD"):
         return None
 
 async def continuous_learning_loop():
-    """Enhanced background task for continuous learning and autonomous trading"""
+    """Enhanced continuous learning loop with mock trading every 1-5 minutes"""
     learning_active = True
     simulation_count = 0
+    last_trade_time = time.time()
+    trade_interval = 120  # Start with 2 minutes, will vary between 1-5 minutes
     
     print("🚀 Starting enhanced continuous learning loop...")
-    print("🎯 Bot will now make trading decisions every 2 minutes")
+    print("🎯 Bot will make trading decisions every 1-5 minutes based on market conditions")
     
     while learning_active:
         try:
-            # Make trading decisions every 2 minutes
-            await asyncio.sleep(120)
+            current_time = time.time()
             
-            # Generate trades for all symbols with smart probability
-            symbols_to_trade = ['XAUUSD', 'EURUSD', 'USDJPY', 'EURJPY']
-            
-            for symbol in symbols_to_trade:
-                # Higher probability for XAUUSD (our best performer)
-                # Lower probability for EURUSD (needs improvement)
-                trade_probabilities = {
-                    'XAUUSD': 0.6,  # Higher probability for gold
-                    'USDJPY': 0.4,  # Medium probability
-                    'EURJPY': 0.4,  # Medium probability
-                    'EURUSD': 0.2   # Lower probability until we fix the issues
-                }
+            # Dynamic trade interval based on market volatility
+            if current_time - last_trade_time >= trade_interval:
                 
-                trade_prob = trade_probabilities.get(symbol, 0.3)
+                # Generate trades for all symbols with smart probability
+                symbols_to_trade = ['XAUUSD', 'EURUSD', 'USDJPY', 'EURJPY', 'GBPUSD']
                 
-                # Make trading decision
-                if np.random.random() < trade_prob:
-                    trade_result = await simulate_trade_from_signal(symbol)
-                    if trade_result:
-                        simulation_count += 1
+                for symbol in symbols_to_trade:
+                    # Currency-specific trading probabilities based on performance
+                    trade_probabilities = {
+                        'XAUUSD': 0.7,   # High probability for best performer
+                        'USDJPY': 0.5,   # Medium probability
+                        'EURJPY': 0.5,   # Medium probability
+                        'GBPUSD': 0.4,   # Medium probability
+                        'EURUSD': 0.3    # Lower probability until issues are fixed
+                    }
+                    
+                    # Get currency performance and adjust probability
+                    if scalping_rl_agent and symbol in scalping_rl_agent.currency_performance:
+                        currency_perf = scalping_rl_agent.currency_performance[symbol]
+                        if currency_perf['trades'] > 0:
+                            win_rate = currency_perf['wins'] / currency_perf['trades']
+                            # Boost probability for high-performing currencies
+                            if win_rate > 0.6:
+                                trade_probabilities[symbol] *= 1.5
+                            elif win_rate < 0.3:
+                                trade_probabilities[symbol] *= 0.5
+                    
+                    trade_prob = min(0.8, trade_probabilities.get(symbol, 0.3))
+                    
+                    # Make trading decision
+                    if np.random.random() < trade_prob:
+                        print(f"🎯 Initiating trade analysis for {symbol}...")
                         
-                        # Enhanced learning: Train RL agent after each trade
-                        if scalping_rl_agent and len(scalping_rl_agent.memory) > 10:
-                            try:
-                                scalping_rl_agent.replay(batch_size=min(32, len(scalping_rl_agent.memory)))
-                                print(f"🧠 RL Agent trained after trade #{simulation_count}")
-                            except Exception as e:
-                                print(f"❌ Error training RL agent: {e}")
-                        
-                        # Print detailed learning progress
-                        if simulation_count % 5 == 0:
-                            print(f"📊 Enhanced Learning Progress: {simulation_count} trades simulated")
-                            print(f"   - RL Agent Memory: {len(scalping_rl_agent.memory) if scalping_rl_agent else 0}")
-                            print(f"   - Current Balance: ${current_balance:.2f}")
-                            print(f"   - Epsilon: {scalping_rl_agent.epsilon:.3f}" if scalping_rl_agent else "N/A")
-                            print(f"   - Win Rate: {(scalping_rl_agent.winning_trades/scalping_rl_agent.trades_made*100):.1f}%" if scalping_rl_agent and scalping_rl_agent.trades_made > 0 else "N/A")
-                            print(f"   - Total Pips: {scalping_rl_agent.total_pips:.1f}" if scalping_rl_agent else "N/A")
+                        trade_result = await simulate_trade_from_signal(symbol)
+                        if trade_result:
+                            simulation_count += 1
+                            last_trade_time = current_time
+                            
+                            # Enhanced learning: Train RL agent after each trade
+                            if scalping_rl_agent and len(scalping_rl_agent.memory) > 10:
+                                try:
+                                    scalping_rl_agent.replay(batch_size=min(32, len(scalping_rl_agent.memory)))
+                                    print(f"🧠 RL Agent trained after trade #{simulation_count}")
+                                except Exception as e:
+                                    print(f"❌ Error training RL agent: {e}")
+                            
+                            # Print detailed learning progress
+                            if simulation_count % 3 == 0:
+                                print(f"📊 Enhanced Learning Progress: {simulation_count} trades simulated")
+                                if scalping_rl_agent:
+                                    metrics = scalping_rl_agent.get_performance_metrics()
+                                    print(f"   - RL Memory: {len(scalping_rl_agent.memory)}/2000")
+                                    print(f"   - Win Rate: {metrics.get('win_rate', 0):.1f}%")
+                                    print(f"   - Total Pips: {metrics.get('total_pips', 0):.1f}")
+                                    print(f"   - Current Stage: {metrics.get('current_stage_name', 'Unknown')}")
+                                    print(f"   - Epsilon: {metrics.get('epsilon', 1):.3f}")
+                    
+                    # Small delay between symbols
+                    await asyncio.sleep(2)
                 
-                # Small delay between symbols
-                await asyncio.sleep(5)
+                # Dynamic interval adjustment (1-5 minutes)
+                # Shorter intervals during high volatility, longer during calm periods
+                base_interval = np.random.randint(60, 300)  # 1-5 minutes
+                
+                # Adjust based on recent trade success
+                if scalping_rl_agent and scalping_rl_agent.trades_made > 0:
+                    recent_win_rate = scalping_rl_agent.winning_trades / scalping_rl_agent.trades_made
+                    if recent_win_rate > 0.6:
+                        base_interval = int(base_interval * 0.8)  # Trade more frequently when winning
+                    elif recent_win_rate < 0.4:
+                        base_interval = int(base_interval * 1.2)  # Trade less frequently when losing
+                
+                trade_interval = max(60, min(300, base_interval))  # Keep within 1-5 minute range
+                print(f"⏰ Next trade cycle in {trade_interval//60}m {trade_interval%60}s")
             
-            # Save progress every 15 minutes (7-8 cycles)
-            if simulation_count > 0 and simulation_count % 8 == 0:
+            # Save progress every 10 trades
+            if simulation_count > 0 and simulation_count % 10 == 0:
                 try:
                     save_all_persistent_data()
                     print(f"💾 Auto-saved learning progress after {simulation_count} trades")
                 except Exception as e:
                     print(f"❌ Error saving progress: {e}")
             
-            # Log system health every hour
+            # System health check every 30 trades
             if simulation_count % 30 == 0 and simulation_count > 0:
                 print(f"🏥 System Health Check:")
                 print(f"   - Total Trades: {simulation_count}")
-                print(f"   - Memory Usage: {len(scalping_rl_agent.memory) if scalping_rl_agent else 0}/2000")
-                print(f"   - Learning Rate: {scalping_rl_agent.lr if scalping_rl_agent else 'N/A'}")
-                print(f"   - Exploration: {scalping_rl_agent.epsilon:.3f}" if scalping_rl_agent else "N/A")
+                if scalping_rl_agent:
+                    print(f"   - Memory Usage: {len(scalping_rl_agent.memory)}/2000")
+                    print(f"   - Learning Rate: {scalping_rl_agent.lr}")
+                    print(f"   - Exploration: {scalping_rl_agent.epsilon:.3f}")
+                    print(f"   - Balance: ${current_balance:.2f}")
+            
+            # Short sleep to prevent excessive CPU usage
+            await asyncio.sleep(10)
                     
         except Exception as e:
             print(f"❌ Error in continuous learning loop: {e}")
-            await asyncio.sleep(60)  # Wait 1 minute on error
+            await asyncio.sleep(30)  # Wait 30 seconds on error
 
 # API Routes
 @api_router.get("/")
