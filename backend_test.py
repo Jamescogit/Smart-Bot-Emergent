@@ -537,6 +537,102 @@ class TradingBotAPITester:
             print(f"  Session Features: {response.get('session_features')}")
         return success
 
+    def test_mock_trades(self):
+        """Test mock trades endpoint for ObjectId serialization"""
+        success, response = self.run_test(
+            "Mock Trades",
+            "GET",
+            "mock-trades",
+            200
+        )
+        if success:
+            if isinstance(response, list):
+                print(f"  Number of mock trades: {len(response)}")
+                if response:
+                    print(f"  Sample trade: {response[0]}")
+            else:
+                print(f"  Response: {response}")
+        return success
+
+    def test_rate_limiting(self):
+        """Test Twelve Data API rate limiting (8 calls per minute)"""
+        print("\n🔍 Testing Rate Limiting (8 calls per minute)...")
+        
+        # Make 9 rapid calls to test rate limiting
+        calls_made = 0
+        rate_limited = False
+        
+        for i in range(9):
+            success, response = self.run_test(
+                f"Rate Limit Test Call {i+1}",
+                "GET",
+                "market-data/XAUUSD",
+                200
+            )
+            calls_made += 1
+            
+            if not success:
+                # Check if this was due to rate limiting
+                if "rate limit" in str(response).lower() or calls_made >= 8:
+                    rate_limited = True
+                    print(f"  ✅ Rate limiting activated after {calls_made} calls")
+                    break
+            
+            time.sleep(0.5)  # Small delay between calls
+        
+        self.tests_run += 1
+        if rate_limited or calls_made <= 8:
+            self.tests_passed += 1
+            return True
+        else:
+            print(f"  ❌ Rate limiting not working - made {calls_made} calls without limit")
+            return False
+
+    def test_autonomous_trading_decisions(self):
+        """Test that bot makes autonomous trading decisions every 2 minutes"""
+        print("\n🔍 Testing Autonomous Trading Decisions...")
+        
+        # Get initial status
+        success1, response1 = self.run_test(
+            "Initial Bot Status",
+            "GET",
+            "bot-trading-status",
+            200
+        )
+        
+        if not success1:
+            return False
+        
+        initial_decisions = response1.get('decisions_made', 0)
+        print(f"  Initial decisions made: {initial_decisions}")
+        
+        # Wait for 2.5 minutes to see if a new decision is made
+        print("  Waiting 2.5 minutes for autonomous decision...")
+        time.sleep(150)  # 2.5 minutes
+        
+        # Get updated status
+        success2, response2 = self.run_test(
+            "Updated Bot Status",
+            "GET",
+            "bot-trading-status",
+            200
+        )
+        
+        if not success2:
+            return False
+        
+        new_decisions = response2.get('decisions_made', 0)
+        print(f"  New decisions made: {new_decisions}")
+        
+        self.tests_run += 1
+        if new_decisions > initial_decisions:
+            self.tests_passed += 1
+            print("  ✅ Autonomous trading decision detected")
+            return True
+        else:
+            print("  ❌ No autonomous trading decision in 2.5 minutes")
+            return False
+
     def run_all_tests(self):
         """Run all API tests"""
         print("🚀 Starting Trading Bot API Tests")
