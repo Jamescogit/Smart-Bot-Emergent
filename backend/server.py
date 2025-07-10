@@ -2872,14 +2872,21 @@ async def train_models():
                 # Pattern data (for TPOT)
                 pattern_features = np.random.randn(15).tolist()
                 
-                # Trading outcome (target variable)
+                # Trading outcome (target variable) - ensure balanced classes
                 # 0: HOLD, 1: BUY, 2: SELL
-                if sentiment_score > 0.1 and indicators['rsi'] < 40:
-                    action = 1  # BUY
-                elif sentiment_score < -0.1 and indicators['rsi'] > 60:
-                    action = 2  # SELL
-                else:
+                rand_val = np.random.random()
+                if rand_val < 0.33:
                     action = 0  # HOLD
+                elif rand_val < 0.66:
+                    action = 1  # BUY
+                else:
+                    action = 2  # SELL
+                
+                # Add some logic to make it more realistic
+                if sentiment_score > 0.1 and indicators['rsi'] < 40:
+                    action = 1  # BUY (bias towards buy on positive sentiment + oversold)
+                elif sentiment_score < -0.1 and indicators['rsi'] > 60:
+                    action = 2  # SELL (bias towards sell on negative sentiment + overbought)
                 
                 training_sample = {
                     'market_data': market_data,
