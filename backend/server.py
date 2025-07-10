@@ -3624,6 +3624,93 @@ async def get_account_status():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error getting account status: {str(e)}")
 
+@api_router.get("/bot-trading-status")
+async def get_bot_trading_status():
+    """Get real-time bot trading status and activity"""
+    try:
+        # Get recent trades from database
+        recent_trades = await db.enhanced_trades.find().sort("timestamp", -1).limit(10).to_list(10)
+        
+        # Calculate real-time statistics
+        total_trades = len(recent_trades)
+        winning_trades = len([t for t in recent_trades if t.get('pips', 0) > 0])
+        losing_trades = total_trades - winning_trades
+        
+        win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
+        total_pips = sum([t.get('pips', 0) for t in recent_trades])
+        
+        # Get current streak
+        current_streak = 0
+        for trade in recent_trades:
+            if trade.get('pips', 0) > 0:
+                current_streak += 1
+            else:
+                break
+        
+        # Get RL agent status
+        rl_status = {
+            "memory_size": len(scalping_rl_agent.memory) if scalping_rl_agent else 0,
+            "trades_made": scalping_rl_agent.trades_made if scalping_rl_agent else 0,
+            "epsilon": round(scalping_rl_agent.epsilon, 3) if scalping_rl_agent else 1.0,
+            "total_pips": round(scalping_rl_agent.total_pips, 1) if scalping_rl_agent else 0,
+            "winning_trades": scalping_rl_agent.winning_trades if scalping_rl_agent else 0
+        }
+        
+        # Check if bot is actively trading
+        last_trade_time = None
+        if recent_trades:
+            last_trade_time = recent_trades[0].get('timestamp')
+        
+        # Determine bot activity status
+        bot_active = False
+        if last_trade_time:
+            from datetime import datetime
+            try:
+                if isinstance(last_trade_time, str):
+                    last_trade_dt = datetime.fromisoformat(last_trade_time.replace('Z', '+00:00'))
+                else:
+                    last_trade_dt = last_trade_time
+                
+                time_since_last_trade = (datetime.now() - last_trade_dt.replace(tzinfo=None)).total_seconds()
+                bot_active = time_since_last_trade < 300  # Active if last trade within 5 minutes
+            except:
+                bot_active = False
+        
+        return {
+            "bot_active": bot_active,
+            "last_trade_time": last_trade_time,
+            "current_balance": round(current_balance, 2),
+            "total_trades": total_trades,
+            "winning_trades": winning_trades,
+            "losing_trades": losing_trades,
+            "win_rate": round(win_rate, 1),
+            "total_pips": round(total_pips, 1),
+            "current_streak": current_streak,
+            "rl_agent_status": rl_status,
+            "recent_trades": recent_trades[:5]  # Last 5 trades
+        }
+        
+    except Exception as e:
+        print(f"❌ Error getting bot trading status: {e}")
+        return {
+            "bot_active": False,
+            "error": str(e),
+            "current_balance": current_balance,
+            "total_trades": 0,
+            "winning_trades": 0,
+            "losing_trades": 0,
+            "win_rate": 0,
+            "total_pips": 0,
+            "current_streak": 0,
+            "rl_agent_status": {
+                "memory_size": len(scalping_rl_agent.memory) if scalping_rl_agent else 0,
+                "trades_made": scalping_rl_agent.trades_made if scalping_rl_agent else 0,
+                "epsilon": round(scalping_rl_agent.epsilon, 3) if scalping_rl_agent else 1.0,
+                "total_pips": round(scalping_rl_agent.total_pips, 1) if scalping_rl_agent else 0,
+                "winning_trades": scalping_rl_agent.winning_trades if scalping_rl_agent else 0
+            }
+        }
+
 @api_router.post("/auto-train-check")
 async def auto_train_check():
     """Automatically check if training is needed and train models if necessary"""
