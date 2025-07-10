@@ -18,6 +18,32 @@ import json
 import pickle
 from collections import deque
 import schedule
+
+# ===== REAL iTick API Integration =====
+class RealITickDataFeed:
+    """
+    REAL iTick API integration - replaces mock data
+    """
+    
+    def __init__(self, api_key="demo"):
+        self.api_key = api_key  # Use "demo" for free access
+        self.base_url = "https://api.itick.org"
+        self.ws_url = "wss://api.itick.org/sws"
+        self.price_data = {}
+        self.price_history = {}
+        self.callbacks = []
+        self.connected = False
+        
+        # Supported symbols
+        self.symbols = {
+            'EURUSD': 'FX.EURUSD',
+            'XAUUSD': 'FX.XAUUSD', 
+            'USDJPY': 'FX.USDJPY',
+            'EURJPY': 'FX.EURJPY',
+            'GBPUSD': 'FX.GBPUSD'
+        }
+        
+        print("🔗 iTick API initialized with demo access")
 import time
 from concurrent.futures import ThreadPoolExecutor
 import yfinance as yf
