@@ -269,6 +269,13 @@ def load_all_persistent_data():
     load_trading_data()
     print("✅ All persistent data loaded successfully!")
 
+# Risk Management Configuration
+STARTING_BALANCE = 200.0  # $200 starting balance
+RISK_PER_TRADE_PCT = 1.5  # 1.5% risk per trade
+MAX_RISK_PER_TRADE = STARTING_BALANCE * (RISK_PER_TRADE_PCT / 100)  # $3.00 max risk
+MIN_POSITION_SIZE = 0.01  # Minimum position size
+MAX_POSITION_SIZE = 1.0   # Maximum position size
+
 # Global variables for models and data
 ml_models = {}
 rl_agent = None
@@ -278,6 +285,10 @@ price_history = {}
 trading_history = []
 model_performance = {}
 candlestick_history = {symbol: deque(maxlen=100) for symbol in SYMBOLS}
+
+# Account tracking
+current_balance = STARTING_BALANCE
+total_trades_made = 0
 
 # Initialize the specialized ML engine and training simulator
 ensemble_ml_engine = EnsembleMLEngine(news_api_key=NEWS_API_KEY) if ML_ENGINE_AVAILABLE else None
