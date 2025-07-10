@@ -2148,6 +2148,204 @@ def determine_trading_strategy(reasons):
     else:
         return "general"
 
+def get_pip_value(symbol):
+    """Get pip value for position sizing calculations"""
+    pip_values = {
+        'XAUUSD': 0.1,     # Gold: $0.10 per pip
+        'EURUSD': 0.0001,  # EUR/USD: $0.0001 per pip
+        'GBPUSD': 0.0001,  # GBP/USD: $0.0001 per pip
+        'USDJPY': 0.01,    # USD/JPY: $0.01 per pip
+        'EURJPY': 0.01     # EUR/JPY: $0.01 per pip
+    }
+    return pip_values.get(symbol, 0.0001)
+
+def calculate_position_size(symbol, atr_value, balance):
+    """Calculate position size based on risk management and ATR"""
+    try:
+        # Risk 1.5% of balance per trade
+        risk_amount = balance * 0.015
+        
+        # Use ATR for stop loss distance
+        sl_distance_pips = atr_value * 10000 if symbol in ['EURUSD', 'GBPUSD'] else atr_value * 10
+        
+        # Calculate position size
+        pip_value = get_pip_value(symbol)
+        if sl_distance_pips > 0 and pip_value > 0:
+            position_size = risk_amount / (sl_distance_pips * pip_value * 100000)
+            # Cap position size between 0.01 and 1.0
+            return max(0.01, min(1.0, position_size))
+        else:
+            return 0.1  # Default position size
+    except:
+        return 0.1  # Safe default
+
+def calculate_enhanced_reward(pips_gained, exit_reason, confidence, symbol, duration_seconds, atr_value):
+    """Enhanced reward calculation based on pips, exit reason, confidence, and other factors"""
+    try:
+        # Base reward from pips (normalized)
+        base_reward = pips_gained / 10.0
+        
+        # Exit reason bonus/penalty
+        exit_bonus = 0
+        if exit_reason == "Take Profit":
+            exit_bonus = 2.0  # Big bonus for hitting TP
+        elif exit_reason == "Stop Loss":
+            exit_bonus = -1.0  # Penalty for hitting SL
+        else:
+            exit_bonus = 0.5  # Small bonus for market close if profitable
+        
+        # Confidence bonus
+        confidence_bonus = (confidence - 0.5) * 2.0  # -1 to +1 based on confidence
+        
+        # Currency-specific multipliers (based on your performance data)
+        currency_multipliers = {
+            'XAUUSD': 1.5,   # Best performer
+            'USDJPY': 1.2,   # Good performer  
+            'EURJPY': 1.1,   # Decent performer
+            'GBPUSD': 1.0,   # Neutral
+            'EURUSD': 0.6    # Problem currency
+        }
+        currency_multiplier = currency_multipliers.get(symbol, 1.0)
+        
+        # Time bonus (reward quick scalps)
+        time_bonus = 0
+        if duration_seconds <= 120:  # 2 minutes or less
+            time_bonus = 1.0
+        elif duration_seconds >= 300:  # 5 minutes or more
+            time_bonus = -0.5
+        
+        # ATR-based volatility adjustment
+        volatility_bonus = 0
+        if atr_value > 0:
+            # Reward trades in appropriate volatility conditions
+            if 0.0005 <= atr_value <= 0.002:  # Good volatility range
+                volatility_bonus = 0.5
+            elif atr_value > 0.003:  # Too volatile
+                volatility_bonus = -0.5
+        
+        # Combine all factors
+        total_reward = (
+            (base_reward * currency_multiplier) +
+            exit_bonus +
+            confidence_bonus +
+            time_bonus +
+            volatility_bonus
+        )
+        
+        return float(total_reward)
+        
+    except Exception as e:
+        print(f"Error calculating enhanced reward: {e}")
+        return 0.0
+
+async def get_enhanced_scalping_signal(symbol, market_data, indicators, atr_value):
+    """Enhanced signal generation with detailed reasoning"""
+    try:
+        # Get basic signal
+        basic_signal = await get_scalping_signal(symbol)
+        
+        # Extract key indicators
+        rsi = indicators.get('RSI', 50)
+        macd = indicators.get('MACD', 0)
+        macd_signal = indicators.get('MACD_Signal', 0)
+        bb_upper = indicators.get('BB_Upper', 0)
+        bb_lower = indicators.get('BB_Lower', 0)
+        current_price = market_data['price']
+        
+        # Enhanced reasoning
+        reasoning_parts = []
+        confidence_score = 0.5
+        action = "HOLD"
+        strategy = "Conservative"
+        
+        # RSI Analysis
+        if rsi < 30:
+            reasoning_parts.append(f"RSI oversold ({rsi:.1f})")
+            confidence_score += 0.2
+            action = "BUY"
+            strategy = "Mean Reversion"
+        elif rsi > 70:
+            reasoning_parts.append(f"RSI overbought ({rsi:.1f})")
+            confidence_score += 0.2
+            action = "SELL" 
+            strategy = "Mean Reversion"
+        elif 45 <= rsi <= 55:
+            reasoning_parts.append(f"RSI neutral ({rsi:.1f})")
+        
+        # MACD Analysis
+        if macd > macd_signal and macd > 0:
+            reasoning_parts.append("MACD bullish crossover")
+            if action != "SELL":
+                action = "BUY"
+                confidence_score += 0.15
+                strategy = "Trend Following"
+        elif macd < macd_signal and macd < 0:
+            reasoning_parts.append("MACD bearish crossover")
+            if action != "BUY":
+                action = "SELL"
+                confidence_score += 0.15
+                strategy = "Trend Following"
+        
+        # Bollinger Bands Analysis
+        if bb_lower > 0 and current_price <= bb_lower:
+            reasoning_parts.append("Price at BB lower band")
+            if action != "SELL":
+                action = "BUY"
+                confidence_score += 0.1
+                strategy = "Bollinger Bounce"
+        elif bb_upper > 0 and current_price >= bb_upper:
+            reasoning_parts.append("Price at BB upper band")
+            if action != "BUY":
+                action = "SELL"
+                confidence_score += 0.1
+                strategy = "Bollinger Bounce"
+        
+        # ATR-based volatility check
+        atr_pips = atr_value * (10000 if symbol in ['EURUSD', 'GBPUSD'] else 10)
+        if atr_pips > 20:
+            reasoning_parts.append(f"High volatility (ATR: {atr_pips:.1f} pips)")
+            confidence_score *= 0.8  # Reduce confidence in high volatility
+        elif atr_pips < 5:
+            reasoning_parts.append(f"Low volatility (ATR: {atr_pips:.1f} pips)")
+            confidence_score *= 0.9  # Slightly reduce confidence in low volatility
+        
+        # Currency-specific adjustments
+        if symbol == 'EURUSD':
+            # Be more conservative with EUR/USD due to poor performance
+            confidence_score *= 0.7
+            reasoning_parts.append("EUR/USD conservative bias")
+        elif symbol == 'XAUUSD':
+            # Be more aggressive with Gold due to good performance
+            confidence_score *= 1.2
+            reasoning_parts.append("Gold performance bias")
+        
+        # Final confidence cap
+        confidence_score = max(0.1, min(0.95, confidence_score))
+        
+        # Require minimum confidence for action
+        if confidence_score < 0.4:
+            action = "HOLD"
+            reasoning_parts.append("Low confidence - holding")
+        
+        # Format reasoning
+        reasoning = f"{action} {symbol} because: " + ", ".join(reasoning_parts)
+        
+        # Create enhanced signal response
+        class EnhancedSignalResponse:
+            def __init__(self):
+                self.action = action
+                self.entry_price = current_price
+                self.confidence = confidence_score
+                self.reasoning = reasoning
+                self.strategy = strategy
+        
+        return EnhancedSignalResponse()
+        
+    except Exception as e:
+        print(f"Error generating enhanced signal: {e}")
+        # Return basic signal as fallback
+        return basic_signal
+
 def update_account_balance(pnl):
     """Update current account balance"""
     global current_balance
