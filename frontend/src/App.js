@@ -628,7 +628,9 @@ function App() {
                   }`}>
                     {autoTrainingStatus.status === 'auto_training' 
                       ? '⏳ Training models...' 
-                      : autoTrainingStatus.message}
+                      : autoTrainingStatus.status === 'completed' || autoTrainingStatus.status === 'auto_trained'
+                        ? `✅ Models active and learning continuously`
+                        : autoTrainingStatus.message}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
                     Models Active: {autoTrainingStatus.models_trained || 0}/4 | 
