@@ -4050,88 +4050,211 @@ async def auto_train_check():
 
 @api_router.post("/train-models")
 async def train_models():
-    """Train all specialized ML models with real-time simulation"""
+    """Enhanced training function with proper feature data and model persistence"""
+    global ml_models, ensemble_ml_engine
+    
     try:
-        # Start training simulation
-        result = await training_simulator.start_training_simulation("XAUUSD")
+        print("🚀 Starting enhanced model training...")
         
-        # Force basic training mode for reliable results
-        use_basic_training = True  # Set to True to ensure reliable training
+        # Initialize models dictionary
+        ml_models = {}
+        training_results = {
+            'models_trained': 0,
+            'training_details': {},
+            'errors': {}
+        }
         
-        if use_basic_training or not ML_ENGINE_AVAILABLE or not ensemble_ml_engine:
-            # Fallback to basic training with simulation
-            print("🔧 Using basic training mode (ensemble ML engine not available)")
-            
-            if len(feature_history) < 100:
-                # Generate some sample data for simulation
-                print("📊 Generating feature data for basic training...")
-                for _ in range(200):
-                    features = np.random.randn(18)
-                    feature_history.append(features)
-            
-            # Basic XGBoost training with real data
-            X = np.array(list(feature_history))
-            y = np.random.choice([0, 1, 2], size=len(X), p=[0.3, 0.4, 0.3])
-            
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-            
-            scaler = StandardScaler()
-            X_train_scaled = scaler.fit_transform(X_train)
-            X_test_scaled = scaler.transform(X_test)
-            
-            # Train XGBoost model
-            xgb_model = xgb.XGBClassifier(n_estimators=100, max_depth=5, learning_rate=0.1)
-            xgb_model.fit(X_train_scaled, y_train)
-            xgb_pred = xgb_model.predict(X_test_scaled)
-            xgb_accuracy = accuracy_score(y_test, xgb_pred)
-            
-            # Train CatBoost model
-            catboost_model = CatBoostClassifier(iterations=50, learning_rate=0.1, depth=4, verbose=False)
-            catboost_model.fit(X_train_scaled, y_train)
-            catboost_pred = catboost_model.predict(X_test_scaled)
-            catboost_accuracy = accuracy_score(y_test, catboost_pred)
-            
-            # Save trained models
-            ml_models['xgboost'] = xgb_model
-            ml_models['catboost'] = catboost_model
-            ml_models['scaler'] = scaler
-            
-            # Update model performance to show success
-            model_performance.update({
-                'ensemble_training': True,
-                'models_trained': 2,
-                'total_models': 4,
-                'last_trained': datetime.now().isoformat(),
-                'xgboost_accuracy': float(xgb_accuracy),
-                'catboost_accuracy': float(catboost_accuracy)
-            })
-            
-            print(f"✅ Basic training completed:")
-            print(f"   - XGBoost accuracy: {xgb_accuracy:.3f}")
-            print(f"   - CatBoost accuracy: {catboost_accuracy:.3f}")
-            
-            # Save basic model training progress
+        # Collect real feature data from price history and indicators
+        print("📊 Collecting feature data...")
+        all_features = []
+        all_targets = []
+        
+        for symbol in SYMBOLS:
             try:
-                save_all_persistent_data()
-                print("💾 Saved basic model training progress")
-            except Exception as e:
-                print(f"❌ Error saving basic model progress: {e}")
-            
+                # Get historical data for the symbol
+                historical_data = await fetch_historical_data(symbol)
+                if not historical_data.empty and len(historical_data) >= 50:
+                    
+                    # Calculate technical indicators
+                    indicators = calculate_technical_indicators(historical_data)
+                    
+                    # Prepare features for each data point
+                    for i in range(20, len(historical_data) - 1):
+                        try:
+                            # Current price data
+                            current_data = {
+                                'symbol': symbol,
+                                'price': historical_data.iloc[i]['close'],
+                                'volume': historical_data.iloc[i]['volume'],
+                                'timestamp': historical_data.index[i]
+                            }
+                            
+                            # Create feature vector
+                            features = prepare_ml_features(current_data, indicators, i, len(historical_data))
+                            
+                            # Create target (next period return)
+                            next_price = historical_data.iloc[i + 1]['close']
+                            current_price = historical_data.iloc[i]['close']
+                            target = 1 if next_price > current_price else 0  # Binary classification
+                            
+                            all_features.append(features)
+                            all_targets.append(target)
+                            
+                        except Exception as feature_error:
+                            continue
+                            
+            except Exception as symbol_error:
+                print(f"❌ Error processing {symbol}: {symbol_error}")
+                continue
+        
+        print(f"✅ Collected {len(all_features)} feature samples")
+        
+        if len(all_features) < 100:
+            print("❌ Insufficient feature data for training")
             return {
-                "message": "Basic ML models trained successfully",
-                "xgboost_accuracy": float(xgb_accuracy),
-                "catboost_accuracy": float(catboost_accuracy),
-                "models_trained": 2,
-                "total_models": 4,
-                "simulation_active": True,
-                "overall_success": True,
-                "detailed_results": {
-                    "xgboost": {"success": True, "accuracy": float(xgb_accuracy)},
-                    "catboost": {"success": True, "accuracy": float(catboost_accuracy)},
-                    "prophet": {"success": False, "error": "Not available in basic mode"},
-                    "tpot": {"success": False, "error": "Not available in basic mode"}
-                }
+                'models_trained': 0,
+                'error': 'Insufficient feature data',
+                'samples_collected': len(all_features)
             }
+        
+        # Convert to numpy arrays
+        X = np.array(all_features)
+        y = np.array(all_targets)
+        
+        # Split data
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        
+        # Scale features
+        scaler = StandardScaler()
+        X_train_scaled = scaler.fit_transform(X_train)
+        X_test_scaled = scaler.transform(X_test)
+        
+        print(f"📊 Training data shape: {X_train_scaled.shape}")
+        
+        # Train XGBoost
+        try:
+            print("🔥 Training XGBoost...")
+            xgb_model = xgb.XGBClassifier(
+                n_estimators=100,
+                max_depth=6,
+                learning_rate=0.1,
+                random_state=42
+            )
+            xgb_model.fit(X_train_scaled, y_train)
+            
+            # Test accuracy
+            accuracy = accuracy_score(y_test, xgb_model.predict(X_test_scaled))
+            
+            ml_models['xgboost'] = xgb_model
+            training_results['models_trained'] += 1
+            training_results['training_details']['xgboost'] = {
+                'accuracy': accuracy,
+                'samples': len(X_train),
+                'status': 'success'
+            }
+            print(f"✅ XGBoost trained - Accuracy: {accuracy:.3f}")
+            
+        except Exception as e:
+            print(f"❌ XGBoost training failed: {e}")
+            training_results['errors']['xgboost'] = str(e)
+        
+        # Train CatBoost
+        try:
+            print("🐱 Training CatBoost...")
+            cat_model = CatBoostClassifier(
+                iterations=100,
+                depth=6,
+                learning_rate=0.1,
+                random_seed=42,
+                verbose=False
+            )
+            cat_model.fit(X_train_scaled, y_train)
+            
+            # Test accuracy
+            accuracy = accuracy_score(y_test, cat_model.predict(X_test_scaled))
+            
+            ml_models['catboost'] = cat_model
+            training_results['models_trained'] += 1
+            training_results['training_details']['catboost'] = {
+                'accuracy': accuracy,
+                'samples': len(X_train),
+                'status': 'success'
+            }
+            print(f"✅ CatBoost trained - Accuracy: {accuracy:.3f}")
+            
+        except Exception as e:
+            print(f"❌ CatBoost training failed: {e}")
+            training_results['errors']['catboost'] = str(e)
+        
+        # Train Prophet (for time series forecasting)
+        try:
+            print("📈 Training Prophet...")
+            # Prepare Prophet data format
+            prophet_data = []
+            for symbol in SYMBOLS[:2]:  # Limit to 2 symbols for Prophet
+                historical_data = await fetch_historical_data(symbol)
+                if not historical_data.empty:
+                    for i, (timestamp, row) in enumerate(historical_data.iterrows()):
+                        prophet_data.append({
+                            'ds': timestamp,
+                            'y': row['close']
+                        })
+            
+            if len(prophet_data) >= 50:
+                prophet_df = pd.DataFrame(prophet_data)
+                prophet_model = Prophet(
+                    changepoint_prior_scale=0.05,
+                    yearly_seasonality=False,
+                    weekly_seasonality=False,
+                    daily_seasonality=True
+                )
+                prophet_model.fit(prophet_df)
+                
+                ml_models['prophet'] = prophet_model
+                training_results['models_trained'] += 1
+                training_results['training_details']['prophet'] = {
+                    'samples': len(prophet_df),
+                    'status': 'success'
+                }
+                print(f"✅ Prophet trained with {len(prophet_df)} samples")
+            else:
+                training_results['errors']['prophet'] = 'Insufficient time series data'
+                
+        except Exception as e:
+            print(f"❌ Prophet training failed: {e}")
+            training_results['errors']['prophet'] = str(e)
+        
+        # Add scaler to models
+        ml_models['scaler'] = scaler
+        
+        # Save all trained models
+        try:
+            save_ml_models()
+            print("💾 Models saved successfully")
+        except Exception as e:
+            print(f"❌ Error saving models: {e}")
+        
+        # Update model performance
+        global model_performance
+        model_performance = {
+            'last_trained': datetime.now().isoformat(),
+            'models_trained': training_results['models_trained'],
+            'training_details': training_results['training_details'],
+            'errors': training_results['errors']
+        }
+        
+        # Save performance data
+        save_trading_data()
+        
+        print(f"✅ Training completed: {training_results['models_trained']} models trained")
+        return training_results
+        
+    except Exception as e:
+        print(f"❌ Training error: {e}")
+        return {
+            'models_trained': 0,
+            'error': str(e)
+        }
         
         # Get training data from database
         training_data_cursor = db.training_data.find().limit(300)
