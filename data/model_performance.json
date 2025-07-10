@@ -1,6 +1,12 @@
 {
-  "ensemble_training": false,
-  "models_trained": 0,
+  "ensemble_training": true,
+  "models_trained": 2,
   "total_models": 4,
-  "last_trained": "2025-07-10T08:11:57.740148"
+  "last_trained": "2025-07-10T08:22:11.473078",
+  "xgboost_accuracy": 0.24390243902439024,
+  "catboost_accuracy": 0.2926829268292683,
+  "xgboost_status": "Active",
+  "catboost_status": "Active",
+  "prophet_status": "Training...",
+  "tpot_status": "Training..."
 }
