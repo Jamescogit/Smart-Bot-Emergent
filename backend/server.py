@@ -824,6 +824,74 @@ def calculate_obv(close, volume):
     obv = (np.sign(close.diff()) * volume).fillna(0).cumsum()
     return obv.fillna(0)
 
+def calculate_position_size(entry_price: float, stop_loss_price: float, symbol: str = "XAUUSD") -> float:
+    """Calculate position size based on risk management rules"""
+    try:
+        # Calculate pip value based on symbol
+        if symbol == 'XAUUSD':
+            pip_value = 0.1  # XAUUSD pip value
+        elif symbol == 'EURUSD':
+            pip_value = 0.0001  # EURUSD pip value
+        elif symbol in ['USDJPY', 'EURJPY']:
+            pip_value = 0.01  # JPY pairs pip value
+        else:
+            pip_value = 0.0001  # Default pip value
+        
+        # Calculate pips at risk
+        pips_at_risk = abs(entry_price - stop_loss_price) / pip_value
+        
+        if pips_at_risk == 0:
+            return MIN_POSITION_SIZE
+        
+        # Calculate position size to risk exactly $3
+        # Position Size = Risk Amount / (Pips at Risk × Pip Value × Contract Size)
+        contract_size = 100000 if symbol in ['EURUSD', 'EURJPY', 'USDJPY'] else 100  # Standard lots
+        
+        position_size = MAX_RISK_PER_TRADE / (pips_at_risk * pip_value * contract_size)
+        
+        # Ensure position size is within limits
+        position_size = max(MIN_POSITION_SIZE, min(position_size, MAX_POSITION_SIZE))
+        
+        print(f"💰 Position Size Calculation:")
+        print(f"   - Entry: ${entry_price:.2f}, SL: ${stop_loss_price:.2f}")
+        print(f"   - Pips at risk: {pips_at_risk:.1f}")
+        print(f"   - Position size: {position_size:.3f} lots")
+        print(f"   - Max risk: ${MAX_RISK_PER_TRADE:.2f}")
+        
+        return round(position_size, 3)
+        
+    except Exception as e:
+        print(f"❌ Error calculating position size: {e}")
+        return MIN_POSITION_SIZE
+
+def calculate_risk_reward_ratio(entry_price: float, stop_loss: float, take_profit: float) -> float:
+    """Calculate risk-reward ratio for the trade"""
+    try:
+        risk = abs(entry_price - stop_loss)
+        reward = abs(take_profit - entry_price)
+        
+        if risk == 0:
+            return 0
+        
+        return reward / risk
+    except:
+        return 0
+
+def update_account_balance(trade_result: float):
+    """Update account balance after trade completion"""
+    global current_balance, total_trades_made
+    
+    current_balance += trade_result
+    total_trades_made += 1
+    
+    # Ensure balance doesn't go below zero
+    current_balance = max(0, current_balance)
+    
+    print(f"💳 Account Update:")
+    print(f"   - Trade P&L: ${trade_result:.2f}")
+    print(f"   - New Balance: ${current_balance:.2f}")
+    print(f"   - Total Trades: {total_trades_made}")
+
 # Data Fetching Functions
 async def fetch_live_data(symbol: str) -> Optional[Dict]:
     """Fetch live market data from EODHD"""
