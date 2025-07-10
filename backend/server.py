@@ -1135,81 +1135,76 @@ def update_account_balance(trade_result: float):
     print(f"   - Total Trades: {total_trades_made}")
 
 # Data Fetching Functions
-async def fetch_live_data(symbol: str) -> Optional[Dict]:
-    """Fetch live market data from EODHD"""
+async def fetch_live_data(symbol):
+    """Fetch live market data from Twelve Data API with rate limiting"""
     try:
-        if symbol in ['XAUUSD', 'EURUSD', 'EURJPY', 'USDJPY']:
-            formatted_symbol = f"{symbol}.FOREX"
-        elif symbol == 'NASDAQ':
-            formatted_symbol = "IXIC.INDX"
-        else:
-            return None
+        # Check cache first
+        cached_data = get_cached_data(symbol)
+        if cached_data:
+            print(f"📊 Using cached data for {symbol}")
+            return cached_data
         
-        url = f"https://eodhistoricaldata.com/api/real-time/{formatted_symbol}"
-        params = {
-            "api_token": EODHD_API_KEY,
-            "fmt": "json"
+        # Check rate limit
+        if not can_make_api_call():
+            print(f"⏳ Rate limit reached, using cached/fallback data for {symbol}")
+            return generate_fallback_data(symbol)
+        
+        # Map our symbols to Twelve Data format
+        symbol_mapping = {
+            'XAUUSD': 'XAU/USD',
+            'EURUSD': 'EUR/USD', 
+            'EURJPY': 'EUR/JPY',
+            'USDJPY': 'USD/JPY',
+            'GBPUSD': 'GBP/USD'
         }
         
-        response = requests.get(url, params=params, timeout=10)
+        twelve_data_symbol = symbol_mapping.get(symbol, symbol)
+        
+        # Make API call to Twelve Data
+        url = f"https://api.twelvedata.com/price"
+        params = {
+            'symbol': twelve_data_symbol,
+            'apikey': TWELVE_DATA_API_KEY
+        }
+        
+        response = requests.get(url, params=params, timeout=5)
+        record_api_call()  # Record the API call
         
         if response.status_code == 200:
             data = response.json()
             
-            # Handle "NA" values and ensure we have valid numeric data
-            def safe_float(value, default=0.0):
-                try:
-                    if value is None or value == "NA" or value == "":
-                        return default
-                    return float(value)
-                except (ValueError, TypeError):
-                    return default
+            if 'price' in data:
+                price = float(data['price'])
+                
+                # Create market data object
+                market_data = {
+                    'symbol': symbol,
+                    'price': price,
+                    'change': 0,  # We'll calculate this from price history
+                    'volume': 1000000,  # Default volume for forex
+                    'timestamp': datetime.now()
+                }
+                
+                # Calculate change from price history
+                if symbol in price_history and len(price_history[symbol]) > 0:
+                    prev_price = price_history[symbol][-1]
+                    market_data['change'] = ((price - prev_price) / prev_price) * 100
+                
+                # Cache the data
+                cache_market_data(symbol, market_data)
+                
+                print(f"✅ Fetched live data for {symbol}: ${price}")
+                return market_data
+            else:
+                print(f"❌ Invalid response format from Twelve Data for {symbol}")
+                return generate_fallback_data(symbol)
+        else:
+            print(f"❌ API error for {symbol}: {response.status_code}")
+            return generate_fallback_data(symbol)
             
-            # Generate realistic sample data if API returns invalid data
-            price = safe_float(data.get('close'))
-            if price == 0.0:
-                # Generate sample data based on symbol
-                if symbol == 'XAUUSD':
-                    price = 2650.0 + np.random.uniform(-50, 50)
-                elif symbol == 'EURUSD':
-                    price = 1.0500 + np.random.uniform(-0.02, 0.02)
-                elif symbol == 'EURJPY':
-                    price = 164.0 + np.random.uniform(-2, 2)
-                elif symbol == 'USDJPY':
-                    price = 156.0 + np.random.uniform(-2, 2)
-                elif symbol == 'NASDAQ':
-                    price = 20000.0 + np.random.uniform(-500, 500)
-            
-            change = safe_float(data.get('change_p'), np.random.uniform(-1.5, 1.5))
-            volume = safe_float(data.get('volume'), np.random.randint(100000, 1000000))
-            
-            return {
-                'symbol': symbol,
-                'price': price,
-                'change': change,
-                'volume': volume,
-                'timestamp': datetime.now()
-            }
     except Exception as e:
-        print(f"Error fetching data for {symbol}: {e}")
-        # Return sample data as fallback
-        price_map = {
-            'XAUUSD': 2650.0 + np.random.uniform(-50, 50),
-            'EURUSD': 1.0500 + np.random.uniform(-0.02, 0.02),
-            'EURJPY': 164.0 + np.random.uniform(-2, 2),
-            'USDJPY': 156.0 + np.random.uniform(-2, 2),
-            'NASDAQ': 20000.0 + np.random.uniform(-500, 500)
-        }
-        
-        return {
-            'symbol': symbol,
-            'price': price_map.get(symbol, 100.0),
-            'change': np.random.uniform(-1.5, 1.5),
-            'volume': np.random.randint(100000, 1000000),
-            'timestamp': datetime.now()
-        }
-    
-    return None
+        print(f"❌ Error fetching live data for {symbol}: {e}")
+        return generate_fallback_data(symbol)
 
 async def fetch_candlestick_data(symbol: str, period: str = '1d', interval: str = '1m') -> List[Dict]:
     """Fetch candlestick data using yfinance for scalping"""
