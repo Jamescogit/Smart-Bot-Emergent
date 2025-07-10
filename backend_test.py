@@ -376,21 +376,165 @@ class TradingBotAPITester:
             
         return was_updated
 
-    def test_mock_trades(self):
-        """Test mock trades endpoint for ObjectId serialization"""
+    def test_bot_trading_status(self):
+        """Test bot trading status endpoint - Fix ObjectId serialization errors"""
         success, response = self.run_test(
-            "Mock Trades",
+            "Bot Trading Status",
             "GET",
-            "mock-trades",
+            "bot-trading-status",
             200
         )
-        if success:
-            if isinstance(response, list):
-                print(f"  Number of mock trades: {len(response)}")
-                if response:
-                    print(f"  Sample trade: {response[0]}")
+        if success and response:
+            print(f"  Bot Active: {response.get('bot_active')}")
+            print(f"  Current Balance: {response.get('current_balance')}")
+            print(f"  Total Trades: {response.get('total_trades')}")
+            print(f"  Win Rate: {response.get('win_rate')}")
+            print(f"  Learning Progress: {response.get('learning_progress')}")
+            
+            # Verify no ObjectId serialization errors
+            try:
+                json.dumps(response)  # This will fail if there are ObjectId issues
+                print("  ✅ No ObjectId serialization errors")
+            except TypeError as e:
+                if "ObjectId" in str(e):
+                    print("  ❌ ObjectId serialization error detected")
+                    success = False
+                else:
+                    print(f"  ❌ Other serialization error: {e}")
+                    success = False
+        return success
+
+    def test_manual_trade(self, symbol):
+        """Test manual trade endpoint - Test autonomous trading logic"""
+        trade_data = {
+            "action": "BUY",
+            "quantity": 0.1,
+            "stop_loss": 0.01,
+            "take_profit": 0.02
+        }
+        success, response = self.run_test(
+            f"Manual Trade for {symbol}",
+            "POST",
+            f"manual-trade/{symbol}",
+            200,
+            data=trade_data
+        )
+        if success and response:
+            print(f"  Trade ID: {response.get('trade_id')}")
+            print(f"  Symbol: {response.get('symbol')}")
+            print(f"  Action: {response.get('action')}")
+            print(f"  Entry Price: {response.get('entry_price')}")
+            print(f"  Status: {response.get('status')}")
+            
+            # Verify trade structure
+            required_fields = ['trade_id', 'symbol', 'action', 'entry_price', 'status']
+            all_fields_present = all(field in response for field in required_fields)
+            if all_fields_present:
+                print("  ✅ Trade structure is valid")
             else:
-                print(f"  Response: {response}")
+                print("  ❌ Trade structure is missing fields")
+                success = False
+        return success
+
+    def test_twelve_data_integration(self, symbol):
+        """Test Twelve Data API integration with rate limiting"""
+        success, response = self.run_test(
+            f"Twelve Data Integration for {symbol}",
+            "GET",
+            f"market-data/{symbol}",
+            200
+        )
+        if success and response:
+            print(f"  Symbol: {response.get('symbol')}")
+            print(f"  Price: {response.get('price')}")
+            print(f"  Change: {response.get('change')}")
+            print(f"  Timestamp: {response.get('timestamp')}")
+            
+            # Verify this is real-time data (not cached/fallback)
+            if 'timestamp' in response:
+                timestamp = response['timestamp']
+                if isinstance(timestamp, str):
+                    try:
+                        parsed_time = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                        time_diff = datetime.now() - parsed_time.replace(tzinfo=None)
+                        if time_diff.total_seconds() < 300:  # Within 5 minutes
+                            print("  ✅ Real-time data confirmed")
+                        else:
+                            print("  ⚠️ Data may be cached or delayed")
+                    except:
+                        print("  ⚠️ Could not parse timestamp")
+            
+            # Verify price is realistic for the symbol
+            price = response.get('price', 0)
+            if symbol == 'XAUUSD' and 2500 < price < 3000:
+                print("  ✅ XAUUSD price is realistic")
+            elif symbol == 'EURUSD' and 0.9 < price < 1.2:
+                print("  ✅ EURUSD price is realistic")
+            elif symbol in ['EURJPY', 'USDJPY'] and 100 < price < 200:
+                print("  ✅ JPY pair price is realistic")
+            elif symbol == 'GBPUSD' and 1.0 < price < 1.5:
+                print("  ✅ GBPUSD price is realistic")
+            else:
+                print(f"  ⚠️ Price {price} may not be realistic for {symbol}")
+        return success
+
+    def test_continuous_learning_loop(self):
+        """Test continuous learning loop status"""
+        success, response = self.run_test(
+            "Continuous Learning Loop Status",
+            "GET",
+            "learning-loop-status",
+            200
+        )
+        if success and response:
+            print(f"  Loop Active: {response.get('loop_active')}")
+            print(f"  Last Decision: {response.get('last_decision_time')}")
+            print(f"  Next Decision: {response.get('next_decision_time')}")
+            print(f"  Decisions Made: {response.get('decisions_made')}")
+            print(f"  Learning Rate: {response.get('learning_rate')}")
+        return success
+
+    def test_enhanced_reward_function(self):
+        """Test enhanced reward function with currency-specific optimization"""
+        success, response = self.run_test(
+            "Enhanced Reward Function Status",
+            "GET",
+            "reward-function-status",
+            200
+        )
+        if success and response:
+            print(f"  Currency Multipliers: {response.get('currency_multipliers')}")
+            print(f"  Reward Components: {response.get('reward_components')}")
+            print(f"  Last Reward: {response.get('last_reward')}")
+        return success
+
+    def test_strategy_learning(self):
+        """Test strategy learning and curriculum learning"""
+        success, response = self.run_test(
+            "Strategy Learning Status",
+            "GET",
+            "strategy-learning-status",
+            200
+        )
+        if success and response:
+            print(f"  Current Curriculum Stage: {response.get('curriculum_stage')}")
+            print(f"  Stage Name: {response.get('stage_name')}")
+            print(f"  Strategy Performance: {response.get('strategy_performance')}")
+            print(f"  Currency Performance: {response.get('currency_performance')}")
+        return success
+
+    def test_multi_timeframe_analysis(self):
+        """Test multi-timeframe analysis in enhanced state preparation"""
+        success, response = self.run_test(
+            "Multi-timeframe Analysis",
+            "GET",
+            "multi-timeframe-analysis/XAUUSD",
+            200
+        )
+        if success and response:
+            print(f"  Timeframes: {response.get('timeframes')}")
+            print(f"  Momentum Analysis: {response.get('momentum_analysis')}")
+            print(f"  Session Features: {response.get('session_features')}")
         return success
 
     def run_all_tests(self):
