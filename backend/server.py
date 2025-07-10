@@ -549,7 +549,7 @@ class ScalpingRLAgent:
         return np.argmax(q_values)
     
     def calculate_scalping_reward(self, action, entry_price, exit_price, symbol, position_size=0.1, trade_duration_minutes=1):
-        """Calculate reward optimized for scalping with risk management"""
+        """Enhanced reward calculation optimized for currency-specific performance"""
         try:
             # Calculate actual P&L
             if action == 1:  # BUY trade
@@ -571,47 +571,78 @@ class ScalpingRLAgent:
                 
             dollar_pnl = pips_gained * pip_value * position_size * 100000
             
-            # RISK MANAGEMENT REWARDS
-            base_reward = 0
+            # ENHANCED REWARD SYSTEM BASED ON YOUR PERFORMANCE DATA
             
-            # 1. P&L Reward (scaled to account size)
-            pnl_reward = dollar_pnl / MAX_RISK_PER_TRADE  # Normalize by max risk ($3)
+            # 1. Currency-specific performance multipliers
+            currency_multipliers = {
+                'XAUUSD': 1.5,   # Your best performer (+122.3 pips) - reward heavily
+                'USDJPY': 1.2,   # Good performer (+69.1 pips)
+                'EURJPY': 1.1,   # Decent performer (+56.3 pips)
+                'EURUSD': 0.6    # Problem currency (multiple losses) - penalize
+            }
+            currency_multiplier = currency_multipliers.get(symbol, 1.0)
             
-            # 2. Risk Management Bonus/Penalty
+            # 2. Base reward from pips
+            base_reward = pips_gained / 10.0  # Normalize to reasonable range
+            
+            # 3. Scalping consistency bonus (5-20 pips sweet spot)
+            consistency_bonus = 0
+            if 5 <= pips_gained <= 20:
+                consistency_bonus = 3.0  # Strong bonus for scalping range
+            elif pips_gained > 50:
+                consistency_bonus = -2.0  # Penalty for excessive risk
+                
+            # 4. Time-based penalty (scalping should be quick)
+            time_penalty = 0
+            if trade_duration_minutes > 60:  # Over 1 hour
+                time_penalty = -2.0
+            elif trade_duration_minutes <= 15:  # Quick scalp bonus
+                time_penalty = 1.0
+                
+            # 5. EUR/USD specific false breakout penalty
+            eur_penalty = 0
+            if symbol == 'EURUSD' and pips_gained < -8:
+                eur_penalty = -5.0  # Heavy penalty for EUR losses
+                
+            # 6. XAUUSD success bonus
+            gold_bonus = 0
+            if symbol == 'XAUUSD' and pips_gained > 15:
+                gold_bonus = 3.0  # Bonus for successful gold trades
+                
+            # 7. Risk management reward
             risk_reward = 0
             if dollar_pnl > 0:
                 # Winning trade: bonus for staying within risk limits
                 if abs(dollar_pnl) <= MAX_RISK_PER_TRADE * 2:  # Within 2x risk
-                    risk_reward = 0.5  # Bonus for controlled risk
+                    risk_reward = 1.0
                 else:
-                    risk_reward = 0.2  # Lower bonus for excessive risk
+                    risk_reward = 0.3
             else:
                 # Losing trade: penalty based on risk management
                 if abs(dollar_pnl) <= MAX_RISK_PER_TRADE:  # Loss within $3 limit
-                    risk_reward = -0.3  # Acceptable loss
+                    risk_reward = -0.5  # Acceptable loss
                 else:
-                    risk_reward = -1.0  # Excessive loss penalty
-            
-            # 3. Time-based reward (scalping should be fast)
-            time_reward = 0
-            if trade_duration_minutes <= 2:
-                time_reward = 0.3  # Fast scalping bonus
-            elif trade_duration_minutes <= 5:
-                time_reward = 0.1  # Acceptable timing
-            else:
-                time_reward = -0.2  # Too slow for scalping
-            
-            # 4. Account preservation reward
+                    risk_reward = -2.0  # Excessive loss penalty
+                    
+            # 8. Account preservation reward
             account_health_reward = 0
-            if current_balance > STARTING_BALANCE * 0.9:  # Account above 90%
+            if current_balance > STARTING_BALANCE * 0.95:  # Account above 95%
+                account_health_reward = 0.5
+            elif current_balance > STARTING_BALANCE * 0.85:  # Account above 85%
                 account_health_reward = 0.2
-            elif current_balance > STARTING_BALANCE * 0.8:  # Account above 80%
-                account_health_reward = 0.1
-            elif current_balance < STARTING_BALANCE * 0.7:  # Account below 70%
-                account_health_reward = -0.5  # Major penalty
+            elif current_balance < STARTING_BALANCE * 0.8:  # Account below 80%
+                account_health_reward = -1.0  # Major penalty
             
-            # Combined reward
-            total_reward = pnl_reward + risk_reward + time_reward + account_health_reward
+            # Final reward calculation
+            total_reward = (
+                (base_reward * currency_multiplier) +
+                consistency_bonus +
+                time_penalty +
+                eur_penalty +
+                gold_bonus +
+                risk_reward +
+                account_health_reward
+            )
             
             # Update performance tracking
             if dollar_pnl > 0:
@@ -623,17 +654,18 @@ class ScalpingRLAgent:
             self.total_pips += pips_gained
             self.trades_made += 1
             
-            print(f"🎯 Scalping Reward Calculation:")
+            print(f"🎯 Enhanced Scalping Reward [{symbol}]:")
             print(f"   - P&L: ${dollar_pnl:.2f} ({pips_gained:.1f} pips)")
-            print(f"   - Risk Mgmt: {risk_reward:.2f}")
-            print(f"   - Time: {time_reward:.2f}")
-            print(f"   - Account Health: {account_health_reward:.2f}")
+            print(f"   - Currency Multiplier: {currency_multiplier:.1f}x")
+            print(f"   - Consistency Bonus: {consistency_bonus:.1f}")
+            print(f"   - Time Factor: {time_penalty:.1f}")
+            print(f"   - Risk Management: {risk_reward:.1f}")
             print(f"   - Total Reward: {total_reward:.3f}")
             
             return float(total_reward)
             
         except Exception as e:
-            print(f"Error calculating scalping reward: {e}")
+            print(f"Error calculating enhanced scalping reward: {e}")
             return 0.0
     
     def remember(self, state, action, reward, next_state, done):
