@@ -130,10 +130,13 @@ function App() {
   // Fetch performance metrics
   const fetchPerformanceMetrics = async () => {
     try {
+      console.log('🔍 Fetching performance metrics from:', `${API}/performance-metrics`);
       const response = await axios.get(`${API}/performance-metrics`);
+      console.log('✅ Performance metrics response:', response.data);
       setPerformanceMetrics(response.data);
     } catch (error) {
-      console.error('Error fetching performance metrics:', error);
+      console.error('❌ Error fetching performance metrics:', error);
+      console.error('❌ Error details:', error.response?.data || error.message);
     }
   };
 
