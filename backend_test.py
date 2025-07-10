@@ -6,12 +6,24 @@ import time
 from datetime import datetime
 
 class TradingBotAPITester:
-    def __init__(self, base_url="http://127.0.0.1:8001"):
+    def __init__(self, base_url=None):
+        # Use the production URL from frontend/.env
+        if base_url is None:
+            # Read the backend URL from frontend/.env
+            try:
+                with open('/app/frontend/.env', 'r') as f:
+                    for line in f:
+                        if line.startswith('REACT_APP_BACKEND_URL='):
+                            base_url = line.split('=')[1].strip()
+                            break
+            except:
+                base_url = "http://127.0.0.1:8001"  # fallback
+        
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.tests_run = 0
         self.tests_passed = 0
-        self.symbols = ['XAUUSD', 'EURUSD', 'USDJPY']  # Symbols to test as per requirements
+        self.symbols = ['XAUUSD', 'EURUSD', 'EURJPY', 'USDJPY', 'GBPUSD']  # Updated symbols as per Twelve Data integration
 
     def run_test(self, name, method, endpoint, expected_status=200, data=None):
         """Run a single API test"""
