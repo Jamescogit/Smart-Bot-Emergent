@@ -13,7 +13,7 @@ console.log('🔍 Debug: REACT_APP_BACKEND_URL =', process.env.REACT_APP_BACKEND
 console.log('🔍 Debug: BACKEND_URL =', BACKEND_URL);
 console.log('🔍 Debug: API =', API);
 
-const SYMBOLS = ['XAUUSD', 'EURUSD', 'EURJPY', 'USDJPY', 'NASDAQ'];
+const SYMBOLS = ['XAUUSD', 'EURUSD', 'EURJPY', 'USDJPY', 'GBPUSD'];
 
 // Colors for Cash-style theme
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
