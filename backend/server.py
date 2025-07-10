@@ -3180,6 +3180,44 @@ async def get_model_status():
         performance=float_performance
     )
 
+@api_router.post("/trigger-learning")
+async def trigger_learning():
+    """Manually trigger continuous learning for immediate training"""
+    try:
+        trades_generated = 0
+        
+        # Generate trades for different symbols
+        symbols_to_trade = ['XAUUSD', 'EURUSD', 'USDJPY']
+        
+        for symbol in symbols_to_trade:
+            for _ in range(5):  # Generate 5 trades per symbol
+                trade_result = await simulate_trade_from_signal(symbol)
+                if trade_result:
+                    trades_generated += 1
+        
+        # Force RL agent training if we have enough data
+        if scalping_rl_agent and len(scalping_rl_agent.memory) >= 5:
+            scalping_rl_agent.replay(batch_size=min(16, len(scalping_rl_agent.memory)))
+            print(f"🧠 RL Agent manually trained on {len(scalping_rl_agent.memory)} experiences")
+        
+        # Save progress
+        save_all_persistent_data()
+        
+        return {
+            "message": "Learning triggered successfully",
+            "trades_generated": trades_generated,
+            "rl_memory_size": len(scalping_rl_agent.memory) if scalping_rl_agent else 0,
+            "current_epsilon": round(scalping_rl_agent.epsilon, 3) if scalping_rl_agent else 1.0,
+            "account_balance": round(current_balance, 2)
+        }
+        
+    except Exception as e:
+        return {
+            "message": f"Error triggering learning: {str(e)}",
+            "trades_generated": 0,
+            "error": str(e)
+        }
+
 @api_router.get("/bot-readiness")
 async def get_bot_readiness():
     """Calculate bot readiness score based on training, performance, and strategy criteria"""
