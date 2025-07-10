@@ -468,6 +468,31 @@ class ScalpingRLAgent:
         self.total_pips = 0
         self.current_streak = 0
         
+        # Strategy learning
+        self.strategy_performance = {
+            'trend_following': {'trades': 0, 'wins': 0, 'pips': 0},
+            'mean_reversion': {'trades': 0, 'wins': 0, 'pips': 0},
+            'breakout': {'trades': 0, 'wins': 0, 'pips': 0},
+            'momentum': {'trades': 0, 'wins': 0, 'pips': 0}
+        }
+        
+        # Currency-specific learning
+        self.currency_performance = {
+            'XAUUSD': {'trades': 0, 'wins': 0, 'pips': 0, 'confidence': 0.8},
+            'EURUSD': {'trades': 0, 'wins': 0, 'pips': 0, 'confidence': 0.3},
+            'USDJPY': {'trades': 0, 'wins': 0, 'pips': 0, 'confidence': 0.6},
+            'EURJPY': {'trades': 0, 'wins': 0, 'pips': 0, 'confidence': 0.6}
+        }
+        
+        # Curriculum learning stages
+        self.curriculum_stage = 0  # Start with stage 0 (XAUUSD focus)
+        self.curriculum_stages = [
+            {'name': 'Gold Focus', 'symbols': ['XAUUSD'], 'min_trades': 50, 'min_winrate': 60},
+            {'name': 'JPY Pairs', 'symbols': ['USDJPY', 'EURJPY'], 'min_trades': 30, 'min_winrate': 55},
+            {'name': 'EUR/USD Challenge', 'symbols': ['EURUSD'], 'min_trades': 20, 'min_winrate': 50},
+            {'name': 'Full Market', 'symbols': ['XAUUSD', 'EURUSD', 'USDJPY', 'EURJPY'], 'min_trades': 100, 'min_winrate': 60}
+        ]
+        
     def prepare_enhanced_scalping_state(self, symbol, candlestick_data):
         """Enhanced state preparation with multi-timeframe analysis"""
         if len(candlestick_data) < 15:
