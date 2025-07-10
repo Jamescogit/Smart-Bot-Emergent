@@ -134,6 +134,32 @@ function App() {
     }
   };
 
+  // Auto-training check function
+  const fetchAutoTrainingCheck = async () => {
+    try {
+      console.log('🤖 Checking auto-training status...');
+      const response = await axios.post(`${API}/auto-train-check`, {}, {
+        timeout: 30000,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      console.log('✅ Auto-training check response:', response.data);
+      setAutoTrainingStatus(response.data);
+      
+      // Update model status if training completed
+      if (response.data.status === 'auto_trained' || response.data.status === 'completed') {
+        fetchModelStatus();
+        fetchPerformanceMetrics();
+      }
+    } catch (error) {
+      console.error('❌ Error in auto-training check:', error);
+      setAutoTrainingStatus({
+        status: 'error',
+        message: 'Failed to check training status',
+        models_trained: 0
+      });
+    }
+  };
+
   // Fetch performance metrics
   const fetchPerformanceMetrics = async () => {
     try {
