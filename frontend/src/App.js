@@ -525,6 +525,51 @@ function App() {
       <div className="p-6">
         {currentView === 'dashboard' ? (
           <div>
+            {/* Training Status Panel */}
+            <div className="mb-6">
+              <div className={`bg-white rounded-lg shadow p-4 border-l-4 ${
+                autoTrainingStatus.status === 'completed' || autoTrainingStatus.status === 'auto_trained' 
+                  ? 'border-green-500' 
+                  : autoTrainingStatus.status === 'waiting' 
+                    ? 'border-yellow-500' 
+                    : 'border-blue-500'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">🤖 AI Training Status</h3>
+                    <p className={`text-sm ${
+                      autoTrainingStatus.status === 'completed' || autoTrainingStatus.status === 'auto_trained' 
+                        ? 'text-green-600' 
+                        : autoTrainingStatus.status === 'waiting' 
+                          ? 'text-yellow-600' 
+                          : 'text-blue-600'
+                    }`}>
+                      {autoTrainingStatus.message}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Models Active: {autoTrainingStatus.models_trained || 0}/4 | 
+                      Features: {autoTrainingStatus.feature_count || 0}
+                    </p>
+                  </div>
+                  <div className={`p-3 rounded-full ${
+                    autoTrainingStatus.status === 'completed' || autoTrainingStatus.status === 'auto_trained' 
+                      ? 'bg-green-100' 
+                      : autoTrainingStatus.status === 'waiting' 
+                        ? 'bg-yellow-100' 
+                        : 'bg-blue-100'
+                  }`}>
+                    <Brain className={`w-6 h-6 ${
+                      autoTrainingStatus.status === 'completed' || autoTrainingStatus.status === 'auto_trained' 
+                        ? 'text-green-600' 
+                        : autoTrainingStatus.status === 'waiting' 
+                          ? 'text-yellow-600' 
+                          : 'text-blue-600'
+                    }`} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Statistics Cards Row - Scalping Focused */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
               <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
