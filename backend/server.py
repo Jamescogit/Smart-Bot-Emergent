@@ -2884,12 +2884,12 @@ async def train_models():
                 training_sample = {
                     'market_data': market_data,
                     'indicators': indicators,
-                    'news_sentiment': sentiment_score,
+                    'news_sentiment': float(sentiment_score),
                     'historical_prices': historical_prices,
                     'pattern_features': pattern_features,
-                    'target_action': action,
-                    'profit_outcome': np.random.normal(5 if action != 0 else 0, 10),  # Pips gained/lost
-                    'event_flag': np.random.choice([0, 1], p=[0.8, 0.2])  # Economic events
+                    'target_action': int(action),
+                    'profit_outcome': float(np.random.normal(5 if action != 0 else 0, 10)),  # Pips gained/lost
+                    'event_flag': int(np.random.choice([0, 1], p=[0.8, 0.2]))  # Economic events
                 }
                 
                 training_data.append(training_sample)
