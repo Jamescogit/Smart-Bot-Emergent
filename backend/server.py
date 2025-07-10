@@ -2795,11 +2795,7 @@ async def train_models():
                 'total_models': 4,
                 'last_trained': datetime.now().isoformat(),
                 'xgboost_accuracy': float(xgb_accuracy),
-                'catboost_accuracy': float(catboost_accuracy),
-                'xgboost_status': 'Active',
-                'catboost_status': 'Active',
-                'prophet_status': 'Training...',
-                'tpot_status': 'Training...'
+                'catboost_accuracy': float(catboost_accuracy)
             })
             
             print(f"✅ Basic training completed:")
