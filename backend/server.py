@@ -2347,38 +2347,50 @@ async def root():
 
 @api_router.get("/market-data/{symbol}")
 async def get_market_data(symbol: str):
-    """Get latest market data for a symbol"""
+    """Get latest market data for a symbol with proper JSON serialization"""
     if symbol not in SYMBOLS:
         raise HTTPException(status_code=400, detail="Invalid symbol")
     
     try:
         data = await fetch_live_data(symbol)
         if data:
+            # Ensure proper JSON serialization
+            if 'timestamp' in data and hasattr(data['timestamp'], 'isoformat'):
+                data['timestamp'] = data['timestamp'].isoformat()
+            
             # Update candlestick history for scalping analysis
             await update_candlestick_history(symbol, data)
+            
+            # Store in database with proper _id handling
+            try:
+                # Remove any existing _id to prevent duplicates
+                data_to_store = data.copy()
+                data_to_store.pop('_id', None)
+                await db.market_data.insert_one(data_to_store)
+            except Exception as db_error:
+                print(f"Database insert warning for {symbol}: {db_error}")
+                # Continue even if database insert fails
+            
             return data
         else:
             # Generate fallback data if API fails
-            price_map = {
-                'XAUUSD': 2650.0 + np.random.uniform(-50, 50),
-                'EURUSD': 1.0500 + np.random.uniform(-0.02, 0.02),
-                'EURJPY': 164.0 + np.random.uniform(-2, 2),
-                'USDJPY': 156.0 + np.random.uniform(-2, 2),
-                'NASDAQ': 20000.0 + np.random.uniform(-500, 500)
-            }
+            fallback_data = generate_fallback_data(symbol)
             
-            fallback_data = {
-                'symbol': symbol,
-                'price': price_map.get(symbol, 100.0),
-                'change': np.random.uniform(-1.5, 1.5),
-                'volume': np.random.randint(100000, 1000000),
-                'timestamp': datetime.now()
-            }
+            # Ensure timestamp is properly serialized
+            if 'timestamp' in fallback_data and hasattr(fallback_data['timestamp'], 'isoformat'):
+                fallback_data['timestamp'] = fallback_data['timestamp'].isoformat()
             
             # Update candlestick history with fallback data
             await update_candlestick_history(symbol, fallback_data)
             return fallback_data
             
+    except Exception as e:
+        print(f"Error getting market data for {symbol}: {e}")
+        # Return fallback data instead of throwing error to keep frontend working
+        fallback_data = generate_fallback_data(symbol)
+        if 'timestamp' in fallback_data and hasattr(fallback_data['timestamp'], 'isoformat'):
+            fallback_data['timestamp'] = fallback_data['timestamp'].isoformat()
+        return fallback_data
     except Exception as e:
         # Generate fallback data on error
         price_map = {
